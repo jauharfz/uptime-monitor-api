@@ -1,0 +1,13 @@
+services:
+  db:
+    image: postgres:17
+    ports:
+      - "5454:5432"
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: 1234567k
+      POSTGRES_DB: uptime_monitor
+    volumes:
+      - uptime_final_data:/var/lib/postgresql/data
+volumes:
+  uptime_final_data:

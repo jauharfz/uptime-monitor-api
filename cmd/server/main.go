@@ -1,0 +1,41 @@
+package main
+
+import (
+	"database/sql"
+	"fmt"
+	"log"
+	"net/http"
+	"os"
+	"uptime-monitor/internal/http"
+
+	_ "github.com/jackc/pgx/v5/stdlib"
+	"github.com/joho/godotenv"
+)
+
+const addr = ":8080"
+
+func main() {
+	err := godotenv.Load()
+	if err != nil {
+		log.Println(err)
+	}
+
+	conn, err := sql.Open("pgx", os.Getenv("DATABASE_URL"))
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "unable to connect database %v\n", err)
+		os.Exit(1)
+	}
+	defer conn.Close()
+	err = conn.Ping()
+	if err != nil {
+		log.Fatal(err)
+	}
+	log.Println("connected to database")
+
+	handler := api.Routes()
+	log.Println("running server locally")
+	err = http.ListenAndServe(addr, handler)
+	if err != nil {
+		log.Fatal(err)
+	}
+}
