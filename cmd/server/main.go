@@ -6,7 +6,8 @@ import (
 	"log"
 	"net/http"
 	"os"
-	"uptime-monitor/internal/http"
+	"uptime-monitor/internal/api"
+	"uptime-monitor/internal/storage"
 
 	_ "github.com/jackc/pgx/v5/stdlib"
 	"github.com/joho/godotenv"
@@ -32,7 +33,10 @@ func main() {
 	}
 	log.Println("connected to database")
 
-	handler := api.Routes()
+	db := storage.NewPostgresStore(conn)
+	repo := api.NewApplication(*db)
+	handler := api.Routes(repo)
+
 	log.Println("running server locally")
 	err = http.ListenAndServe(addr, handler)
 	if err != nil {
