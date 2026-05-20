@@ -17,3 +17,17 @@ func (s *PostgresStore) InsertUser(user models.User) error {
 	}
 	return nil
 }
+
+func (s *PostgresStore) GetUserByEmail(email string) (models.User, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+	defer cancel()
+
+	query := `SELECT * FROM users WHERE email=$1`
+	var user models.User
+	row := s.DB.QueryRowContext(ctx, query, email)
+	err := row.Scan(&user.ID, &user.Username, &user.Password, &user.Email, &user.CreatedAt, &user.UpdatedAt)
+	if err != nil {
+		return user, err
+	}
+	return user, nil
+}

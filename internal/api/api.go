@@ -4,6 +4,8 @@ import (
 	"uptime-monitor/internal/storage"
 )
 
+const maxBytes = 1048576
+
 type Application struct {
 	DB storage.PostgresStore
 }

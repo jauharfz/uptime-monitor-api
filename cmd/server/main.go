@@ -7,16 +7,16 @@ import (
 	"net/http"
 	"os"
 	"uptime-monitor/internal/api"
+	"uptime-monitor/internal/config"
 	"uptime-monitor/internal/storage"
 
 	_ "github.com/jackc/pgx/v5/stdlib"
-	"github.com/joho/godotenv"
 )
 
 const addr = ":8080"
 
 func main() {
-	err := godotenv.Load()
+	err := config.LoadEnv(".env")
 	if err != nil {
 		log.Println(err)
 	}
