@@ -42,7 +42,7 @@ func GenerateJWT(userID int) (string, error) {
 }
 
 func Verify(token string) (map[string]interface{}, error) {
-	parts := strings.Split(token, ",")
+	parts := strings.Split(token, ".")
 	if len(parts) != 3 {
 		return nil, errors.New("invalid error format")
 	}
@@ -67,7 +67,7 @@ func Verify(token string) (map[string]interface{}, error) {
 
 	expFloat, ok := payload["exp"].(float64)
 	if ok {
-		if time.Now().Unix() < int64(expFloat) {
+		if time.Now().Unix() > int64(expFloat) {
 			return nil, errors.New("token is expired")
 
 		}
