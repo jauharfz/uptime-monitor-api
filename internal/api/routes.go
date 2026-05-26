@@ -9,6 +9,7 @@ func Routes(app *Application) *http.ServeMux {
 	mux.Handle("GET /secret", app.RequireAuth(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte("testing secret"))
 	})))
+	mux.Handle("POST /monitor", app.RequireAuth(http.HandlerFunc(app.PostMonitor)))
 
 	return mux
 }

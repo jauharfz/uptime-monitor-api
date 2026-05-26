@@ -1,7 +1,9 @@
 package api
 
 import (
+	"context"
 	"fmt"
+	"log"
 	"net/http"
 	"strings"
 	"uptime-monitor/internal/auth"
@@ -15,14 +17,18 @@ func (app *Application) RequireAuth(next http.Handler) http.Handler {
 			return
 		}
 		authToken := strings.TrimPrefix(authHeader, "Bearer ")
-
-		fmt.Printf("DEBUG TOKEN: '%s'\n", authToken)
-
-		_, err := auth.Verify(authToken)
+		fmt.Printf("DEBUG TOKEN MASUK: '%s'\n", authToken)
+		payload, err := auth.Verify(authToken)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusUnauthorized)
 			return
 		}
+		ctx := context.WithValue(r.Context(), contextKeyUserID, payload["user_id"])
+		r = r.WithContext(ctx)
+		log.Println(authToken)
+		log.Println(payload)
+
 		next.ServeHTTP(w, r)
+
 	})
 }
