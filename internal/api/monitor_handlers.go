@@ -40,7 +40,7 @@ func (app *Application) PostMonitor(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusCreated)
 	err = json.NewEncoder(w).Encode(&response)
 	if err != nil {
-		log.Println("Error encoding respoonse", err)
+		log.Println("Error encoding response", err)
 		return
 	}
 }
