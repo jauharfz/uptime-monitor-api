@@ -33,7 +33,3 @@ PUT /monitors/{id} <- for user can update available url
 DELETE /monitors/{id} <- for user can delete available url
 GET /monitors/{id}/checks <- for user can checks the report of url
 
-Mynotes:{
-saya masih bingung standar namingnya sesuai standar industri yang real gimana, apakah bener repository? atau application aja? terus ini storage? atau ganti jadi repository? ,terus ini direktorinya http atau api? routes atau server? handlers saja atau dipisah kayak user_handlers, monitor_handlers,admin_handlers, dan sebagainya?, struct repository/application/etc yang dipake buat hanlder, mending taroh di routes/server, dihandler aja kayak gini, atau dipisah filenya? juga struct jsonResponsenya, terus juga aku masih sangat meragukan dengan strukturnya apakah ini sesusai standar industri dan namingnya juga, mungkin bisa koreksi punyaku lagi ini
-
-}
