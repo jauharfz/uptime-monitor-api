@@ -14,9 +14,12 @@ func Routes(app *Application) http.Handler {
 	protectedMux.HandleFunc("GET /secret", func(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte("Testing Secret Success"))
 	})
-	protectedMux.HandleFunc("POST /monitor", app.PostMonitor)
+	protectedMux.HandleFunc("POST /monitor", app.CreateMonitor)
+	protectedMux.HandleFunc("GET /monitor/{id}", app.ShowMonitor)
 
 	mux.Handle("/", app.RequireAuth(protectedMux))
 
 	return mux
 }
+
+// TODO: CREATE A GET,PUT, DELETE MONITOR ENDPOINT and the "STUFF"

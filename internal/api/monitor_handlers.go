@@ -4,10 +4,11 @@ import (
 	"encoding/json"
 	"log"
 	"net/http"
+	"strconv"
 	"uptime-monitor/internal/models"
 )
 
-func (app *Application) PostMonitor(w http.ResponseWriter, r *http.Request) {
+func (app *Application) CreateMonitor(w http.ResponseWriter, r *http.Request) {
 	var monitor models.Monitor
 	r.Body = http.MaxBytesReader(w, r.Body, maxBytes)
 
@@ -41,6 +42,40 @@ func (app *Application) PostMonitor(w http.ResponseWriter, r *http.Request) {
 	err = json.NewEncoder(w).Encode(&response)
 	if err != nil {
 		log.Println("Error encoding response", err)
+		return
+	}
+}
+
+func (app *Application) ShowMonitor(w http.ResponseWriter, r *http.Request) {
+	idStr := r.PathValue("id")
+	monitorID, err := strconv.Atoi(idStr)
+	if err != nil {
+		http.Error(w, "invalid monitor id", http.StatusBadRequest)
+		return
+	}
+
+	userID, ok := r.Context().Value(contextKeyUserID).(float64)
+	if !ok {
+		http.Error(w, "cannot get userID", http.StatusUnauthorized)
+		return
+	}
+
+	monitor, err := app.DB.GetMonitorByID(monitorID, int(userID))
+	if err != nil {
+		http.Error(w, "monitor not found", http.StatusInternalServerError)
+		return
+	}
+
+	response := jsonResponse{
+		Status:  "success",
+		Message: "get monitor",
+		Data:    monitor,
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	err = json.NewEncoder(w).Encode(response)
+	if err != nil {
+		log.Println("error encoding response", err)
 		return
 	}
 }

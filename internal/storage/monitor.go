@@ -6,13 +6,13 @@ import (
 	"uptime-monitor/internal/models"
 )
 
-func (s *PostgresStore) GetMonitorByUserID(userID int) (models.Monitor, error) {
+func (s *PostgresStore) GetMonitorByID(id, userID int) (models.Monitor, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
 	defer cancel()
 
-	query := `SELECT * FROM monitors WHERE user_ID = $1`
+	query := `SELECT * FROM monitors WHERE id = $1 and user_id = $2`
 	var monitor models.Monitor
-	row := s.DB.QueryRowContext(ctx, query, monitor.UserID)
+	row := s.DB.QueryRowContext(ctx, query, id, userID)
 	err := row.Scan(&monitor.ID, &monitor.UserID, &monitor.Url, &monitor.CheckInterval, &monitor.CreatedAt, &monitor.UpdatedAt)
 	if err != nil {
 		return monitor, err
