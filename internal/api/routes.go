@@ -15,7 +15,9 @@ func Routes(app *Application) http.Handler {
 		w.Write([]byte("Testing Secret Success"))
 	})
 	protectedMux.HandleFunc("POST /monitor", app.CreateMonitor)
+	protectedMux.HandleFunc("GET /monitor", app.ListMonitors)
 	protectedMux.HandleFunc("GET /monitor/{id}", app.ShowMonitor)
+	protectedMux.HandleFunc("PATCH /monitor/{id}", app.UpdateMonitor)
 
 	mux.Handle("/", app.RequireAuth(protectedMux))
 
