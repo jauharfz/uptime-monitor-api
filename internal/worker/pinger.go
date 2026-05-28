@@ -4,6 +4,7 @@ import (
 	"log"
 	"net/http"
 	"time"
+	"uptime-monitor/internal/api"
 )
 
 func Ping(targetURL string) (int, time.Duration, error) {
@@ -21,13 +22,32 @@ func Ping(targetURL string) (int, time.Duration, error) {
 	return resp.StatusCode, elapsed, nil
 }
 
-func StartWorker() {
-	ticker := time.NewTicker(1 * time.Second)
+func StartWorker(app *api.Application) {
 	log.Println("worker started")
+	ticker := time.NewTicker(10 * time.Second)
+	defer ticker.Stop()
 	for {
 		<-ticker.C
-		log.Println("chekcing url....")
-		statusCode, duration, err := Ping("https://google.com")
-		log.Println(statusCode, duration, err)
+		monitors, err := app.DB.GetAllMonitors()
+		if err != nil {
+			log.Println(err)
+			continue
+		}
+
+		for _, monitor := range monitors {
+
+			status, duration, err := Ping(monitor.Url)
+			if err != nil {
+				log.Println("cannot ping a url", monitor.Url, err)
+				status = 0
+			}
+			log.Println("Url Pinged")
+			err = app.DB.InsertCheck(monitor.ID, status, int(duration.Milliseconds()))
+			if err != nil {
+				log.Println("internal server error", monitor.Url, err)
+				continue
+			}
+			log.Println("Url Inserted Normally")
+		}
 	}
 }

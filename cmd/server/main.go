@@ -39,7 +39,7 @@ func main() {
 	handler := api.Routes(repo)
 
 	log.Println("running server locally")
-	go worker.StartWorker()
+	go worker.StartWorker(repo)
 	err = http.ListenAndServe(addr, handler)
 	if err != nil {
 		log.Fatal(err)
