@@ -125,6 +125,7 @@ func (app *Application) UpdateMonitor(w http.ResponseWriter, r *http.Request) {
 	monitor, err := app.DB.GetMonitorByID(id, int(userID))
 	if err != nil {
 		http.Error(w, "cannot get monitor by id", http.StatusInternalServerError)
+		return
 	}
 
 	decode := json.NewDecoder(r.Body)
@@ -149,6 +150,39 @@ func (app *Application) UpdateMonitor(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
 
+	err = json.NewEncoder(w).Encode(response)
+	if err != nil {
+		log.Println("error encoding response", err)
+		return
+	}
+}
+
+func (app *Application) DeleteMonitor(w http.ResponseWriter, r *http.Request) {
+	idStr := r.PathValue("id")
+	id, err := strconv.Atoi(idStr)
+	if err != nil {
+		http.Error(w, "invalid path value", http.StatusBadRequest)
+		return
+	}
+
+	userID, ok := r.Context().Value(contextKeyUserID).(float64)
+	if !ok {
+		http.Error(w, "cannot get user id", http.StatusUnauthorized)
+		return
+	}
+
+	err = app.DB.DeleteMonitorByID(id, int(userID))
+	if err != nil {
+		http.Error(w, "monitor not found or server error", http.StatusInternalServerError)
+		return
+	}
+
+	response := jsonResponse{
+		Status:  "success",
+		Message: "monitor has been deleted",
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
 	err = json.NewEncoder(w).Encode(response)
 	if err != nil {
 		log.Println("error encoding response", err)

@@ -68,3 +68,16 @@ func (s *PostgresStore) UpdateMonitorByID(id, userID, checkInterval int, url str
 	}
 	return nil
 }
+
+func (s *PostgresStore) DeleteMonitorByID(id, userID int) error {
+	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+	defer cancel()
+
+	stmt := `DELETE FROM monitors WHERE id = $1 and user_id = $2`
+
+	_, err := s.DB.ExecContext(ctx, stmt, id, userID)
+	if err != nil {
+		return err
+	}
+	return nil
+}
