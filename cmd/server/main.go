@@ -9,7 +9,6 @@ import (
 	"uptime-monitor/internal/api"
 	"uptime-monitor/internal/config"
 	"uptime-monitor/internal/storage"
-	"uptime-monitor/internal/worker"
 
 	_ "github.com/jackc/pgx/v5/stdlib"
 )
@@ -39,7 +38,7 @@ func main() {
 	handler := api.Routes(repo)
 
 	log.Println("running server locally")
-	go worker.StartWorker(repo)
+	// go worker.StartWorker(repo)
 	err = http.ListenAndServe(addr, handler)
 	if err != nil {
 		log.Fatal(err)

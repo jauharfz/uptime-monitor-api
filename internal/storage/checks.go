@@ -43,3 +43,28 @@ func (s *PostgresStore) InsertCheck(monitorID, status, duration int) error {
 	}
 	return nil
 }
+
+func (s *PostgresStore) GetChecksByMonitorID(id int) ([]models.Check, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+	defer cancel()
+
+	query := `SELECT * FROM checks WHERE monitor_id = $1 ORDER BY created_at DESC LIMIT 50`
+	var checks []models.Check
+	var check models.Check
+
+	rows, err := s.DB.QueryContext(ctx, query, id)
+	if err != nil {
+		return checks, err
+	}
+	for rows.Next() {
+		err = rows.Scan(&check.ID, &check.MonitorID, &check.StatusCode, &check.ResponseTime, &check.CreatedAt, &check.UpdatedAt)
+		if err != nil {
+			return checks, err
+		}
+		checks = append(checks, check)
+	}
+	if rows.Err() != nil {
+		return checks, err
+	}
+	return checks, nil
+}

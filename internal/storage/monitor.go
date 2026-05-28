@@ -2,6 +2,7 @@ package storage
 
 import (
 	"context"
+	"database/sql"
 	"time"
 	"uptime-monitor/internal/models"
 )
@@ -75,9 +76,18 @@ func (s *PostgresStore) DeleteMonitorByID(id, userID int) error {
 
 	stmt := `DELETE FROM monitors WHERE id = $1 and user_id = $2`
 
-	_, err := s.DB.ExecContext(ctx, stmt, id, userID)
+	result, err := s.DB.ExecContext(ctx, stmt, id, userID)
 	if err != nil {
 		return err
+	}
+
+	rowsAffected, err := result.RowsAffected()
+	if err != nil {
+		return err
+	}
+
+	if rowsAffected == 0 {
+		return sql.ErrNoRows
 	}
 	return nil
 }
