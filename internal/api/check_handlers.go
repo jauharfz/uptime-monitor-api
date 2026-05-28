@@ -15,9 +15,15 @@ func (app *Application) CheckMonitor(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	_, ok := r.Context().Value(contextKeyUserID).(float64)
+	userID, ok := r.Context().Value(contextKeyUserID).(float64)
 	if !ok {
 		http.Error(w, "cannot get user id", http.StatusUnauthorized)
+		return
+	}
+
+	_, err = app.DB.GetMonitorByID(id, int(userID))
+	if err != nil {
+		http.Error(w, "invalid request", http.StatusBadRequest)
 		return
 	}
 
