@@ -24,18 +24,17 @@ func Ping(targetURL string) (int, time.Duration, error) {
 
 func StartWorker(app *api.Application) {
 	log.Println("worker started")
-	ticker := time.NewTicker(10 * time.Second)
+	ticker := time.NewTicker(5 * time.Second)
 	defer ticker.Stop()
 	for {
 		<-ticker.C
-		monitors, err := app.DB.GetAllMonitors()
+		monitors, err := app.DB.GetMonitorsDueForCheck()
 		if err != nil {
 			log.Println(err)
 			continue
 		}
 
 		for _, monitor := range monitors {
-
 			status, duration, err := Ping(monitor.Url)
 			if err != nil {
 				log.Println("cannot ping a url", monitor.Url, err)
@@ -43,6 +42,11 @@ func StartWorker(app *api.Application) {
 			}
 			log.Println("Url Pinged")
 			err = app.DB.InsertCheck(monitor.ID, status, int(duration.Milliseconds()))
+			if err != nil {
+				log.Println("internal server error", monitor.Url, err)
+				continue
+			}
+			err = app.DB.UpdateLastCheckedMonitor(monitor.ID)
 			if err != nil {
 				log.Println("internal server error", monitor.Url, err)
 				continue

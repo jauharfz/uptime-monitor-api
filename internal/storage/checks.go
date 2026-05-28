@@ -2,6 +2,7 @@ package storage
 
 import (
 	"context"
+	"log"
 	"time"
 	"uptime-monitor/internal/models"
 )
@@ -12,14 +13,15 @@ func (s *PostgresStore) GetAllMonitors() ([]models.Monitor, error) {
 
 	query := `SELECT * FROM monitors`
 	var monitors []models.Monitor
-	var monitor models.Monitor
 
 	rows, err := s.DB.QueryContext(ctx, query)
 	if err != nil {
 		return monitors, err
 	}
+	defer rows.Close()
 	for rows.Next() {
-		err = rows.Scan(&monitor.ID, &monitor.UserID, &monitor.Url, &monitor.CheckInterval, &monitor.CreatedAt, &monitor.UpdatedAt)
+		var monitor models.Monitor
+		err = rows.Scan(&monitor.ID, &monitor.UserID, &monitor.Url, &monitor.CheckInterval, &monitor.CreatedAt, &monitor.UpdatedAt, &monitor.LastCheckedAt)
 		if err != nil {
 			return monitors, err
 		}
@@ -56,6 +58,7 @@ func (s *PostgresStore) GetChecksByMonitorID(id int) ([]models.Check, error) {
 	if err != nil {
 		return checks, err
 	}
+	defer rows.Close()
 	for rows.Next() {
 		err = rows.Scan(&check.ID, &check.MonitorID, &check.StatusCode, &check.ResponseTime, &check.CreatedAt, &check.UpdatedAt)
 		if err != nil {
@@ -67,4 +70,46 @@ func (s *PostgresStore) GetChecksByMonitorID(id int) ([]models.Check, error) {
 		return checks, err
 	}
 	return checks, nil
+}
+
+func (s *PostgresStore) GetMonitorsDueForCheck() ([]models.Monitor, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+	defer cancel()
+
+	query := `SELECT * FROM monitors WHERE last_checked_at IS NULL OR
+	last_checked_at + (interval '1 second' * check_interval) <= NOW()`
+
+	var monitors []models.Monitor
+	rows, err := s.DB.QueryContext(ctx, query)
+	if err != nil {
+		return monitors, err
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var monitor models.Monitor
+		err = rows.Scan(&monitor.ID, &monitor.UserID, &monitor.Url, &monitor.CheckInterval, &monitor.CreatedAt, &monitor.UpdatedAt, &monitor.LastCheckedAt)
+		if err != nil {
+			return nil, err
+		}
+		monitors = append(monitors, monitor)
+	}
+	if rows.Err() != nil {
+		return nil, err
+	}
+	log.Println(monitors)
+	return monitors, nil
+}
+
+func (s *PostgresStore) UpdateLastCheckedMonitor(id int) error {
+	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+	defer cancel()
+
+	stmt := `UPDATE monitors SET last_checked_at = NOW() WHERE id = $1`
+
+	_, err := s.DB.ExecContext(ctx, stmt, id)
+	if err != nil {
+		return err
+	}
+	return nil
 }

@@ -13,14 +13,15 @@ func (s *PostgresStore) GetAllMonitorByUserID(userID int) ([]models.Monitor, err
 
 	query := `SELECT * FROM monitors WHERE user_id = $1`
 	var monitors []models.Monitor
-	var monitor models.Monitor
 
 	rows, err := s.DB.QueryContext(ctx, query, userID)
 	if err != nil {
 		return nil, err
 	}
+	defer rows.Close()
 	for rows.Next() {
-		err = rows.Scan(&monitor.ID, &monitor.UserID, &monitor.Url, &monitor.CheckInterval, &monitor.CreatedAt, &monitor.UpdatedAt)
+		var monitor models.Monitor
+		err = rows.Scan(&monitor.ID, &monitor.UserID, &monitor.Url, &monitor.CheckInterval, &monitor.CreatedAt, &monitor.UpdatedAt, &monitor.LastCheckedAt)
 		if err != nil {
 			return nil, err
 		}
@@ -39,7 +40,7 @@ func (s *PostgresStore) GetMonitorByID(id, userID int) (models.Monitor, error) {
 	query := `SELECT * FROM monitors WHERE id = $1 and user_id = $2`
 	var monitor models.Monitor
 	row := s.DB.QueryRowContext(ctx, query, id, userID)
-	err := row.Scan(&monitor.ID, &monitor.UserID, &monitor.Url, &monitor.CheckInterval, &monitor.CreatedAt, &monitor.UpdatedAt)
+	err := row.Scan(&monitor.ID, &monitor.UserID, &monitor.Url, &monitor.CheckInterval, &monitor.CreatedAt, &monitor.UpdatedAt, &monitor.LastCheckedAt)
 	if err != nil {
 		return monitor, err
 	}
