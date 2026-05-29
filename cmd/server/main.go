@@ -1,11 +1,16 @@
 package main
 
 import (
+	"context"
 	"database/sql"
 	"fmt"
 	"log"
 	"net/http"
 	"os"
+	"os/signal"
+	"sync"
+	"syscall"
+	"time"
 	"uptime-monitor/internal/api"
 	"uptime-monitor/internal/config"
 	"uptime-monitor/internal/storage"
@@ -28,6 +33,7 @@ func main() {
 		os.Exit(1)
 	}
 	defer conn.Close()
+
 	err = conn.Ping()
 	if err != nil {
 		log.Fatal(err)
@@ -35,13 +41,38 @@ func main() {
 	log.Println("connected to database")
 
 	db := storage.NewPostgresStore(conn)
-	repo := api.NewApplication(*db)
+	repo := api.NewApplication(db)
 	handler := api.Routes(repo)
 
-	log.Println("running server locally")
-	go worker.StartWorker(repo)
-	err = http.ListenAndServe(addr, handler)
-	if err != nil {
-		log.Fatal(err)
+	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+	defer stop()
+
+	var wg sync.WaitGroup
+	wg.Add(1)
+	go worker.StartWorker(ctx, &wg, repo)
+
+	wg.Add(1)
+	srv := &http.Server{
+		Addr:    ":8080",
+		Handler: handler,
 	}
+	go func() {
+		defer wg.Done()
+		log.Println("running server locally")
+		err = srv.ListenAndServe()
+		if err != nil && err != http.ErrServerClosed {
+			log.Fatal("HTTP Server Error", err)
+		}
+	}()
+
+	<-ctx.Done()
+	shutdownCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	err = srv.Shutdown(shutdownCtx)
+	if err != nil {
+		log.Println("HTTP Server Shutdown Error", err)
+	}
+
+	wg.Wait()
 }

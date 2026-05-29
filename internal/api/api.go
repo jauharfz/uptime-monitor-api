@@ -10,8 +10,8 @@ type Application struct {
 	DB storage.PostgresStore
 }
 
-func NewApplication(db storage.PostgresStore) *Application {
+func NewApplication(db *storage.PostgresStore) *Application {
 	return &Application{
-		DB: db,
+		DB: *db,
 	}
 }
