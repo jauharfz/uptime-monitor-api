@@ -19,13 +19,17 @@ import (
 	_ "github.com/jackc/pgx/v5/stdlib"
 )
 
-const addr = ":8080"
-
 func main() {
 	err := config.LoadEnv(".env")
 	if err != nil {
 		log.Println(err)
 	}
+
+	port := os.Getenv("PORT")
+	if port == "" {
+		port = "8080"
+	}
+	addr := ":" + port
 
 	conn, err := sql.Open("pgx", os.Getenv("DATABASE_URL"))
 	if err != nil {
@@ -53,7 +57,7 @@ func main() {
 
 	wg.Add(1)
 	srv := &http.Server{
-		Addr:    ":8080",
+		Addr:    addr,
 		Handler: handler,
 	}
 	go func() {
