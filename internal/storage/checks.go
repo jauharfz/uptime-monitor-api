@@ -2,7 +2,6 @@ package storage
 
 import (
 	"context"
-	"log"
 	"time"
 	"uptime-monitor/internal/models"
 )
@@ -97,7 +96,6 @@ func (s *PostgresStore) GetMonitorsDueForCheck() ([]models.Monitor, error) {
 	if rows.Err() != nil {
 		return nil, err
 	}
-	log.Println(monitors)
 	return monitors, nil
 }
 

@@ -3,8 +3,7 @@ package main
 import (
 	"context"
 	"database/sql"
-	"fmt"
-	"log"
+	"log/slog"
 	"net/http"
 	"os"
 	"os/signal"
@@ -20,9 +19,13 @@ import (
 )
 
 func main() {
+
+	logger := slog.New(slog.NewJSONHandler(os.Stdout, nil))
+	slog.SetDefault(logger)
+
 	err := config.LoadEnv(".env")
 	if err != nil {
-		log.Println(err)
+		slog.Error(".env not found", "error", err)
 	}
 
 	port := os.Getenv("PORT")
@@ -33,16 +36,17 @@ func main() {
 
 	conn, err := sql.Open("pgx", os.Getenv("DATABASE_URL"))
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "unable to connect database %v\n", err)
+		slog.Error("unable to connect database", "error", err)
 		os.Exit(1)
 	}
 	defer conn.Close()
 
 	err = conn.Ping()
 	if err != nil {
-		log.Fatal(err)
+		slog.Error("failed to ping database connection", "error", err)
+		os.Exit(1)
 	}
-	log.Println("connected to database")
+	slog.Info("connected to database")
 
 	db := storage.NewPostgresStore(conn)
 	repo := api.NewApplication(db)
@@ -62,10 +66,10 @@ func main() {
 	}
 	go func() {
 		defer wg.Done()
-		log.Println("running server locally")
+		slog.Info("running server locally")
 		err = srv.ListenAndServe()
 		if err != nil && err != http.ErrServerClosed {
-			log.Fatal("HTTP Server Error", err)
+			slog.Error("HTTP Server Error", "error", err)
 		}
 	}()
 
@@ -75,7 +79,7 @@ func main() {
 
 	err = srv.Shutdown(shutdownCtx)
 	if err != nil {
-		log.Println("HTTP Server Shutdown Error", err)
+		slog.Error("HTTP Shutdown Error", "error", err)
 	}
 
 	wg.Wait()

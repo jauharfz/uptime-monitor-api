@@ -2,7 +2,7 @@ package api
 
 import (
 	"encoding/json"
-	"log"
+	"log/slog"
 	"net/http"
 	"strconv"
 	"uptime-monitor/internal/models"
@@ -16,32 +16,34 @@ func (app *Application) CreateMonitor(w http.ResponseWriter, r *http.Request) {
 	decoder.DisallowUnknownFields()
 	err := decoder.Decode(&monitor)
 	if err != nil {
-		log.Println("ERROR DECODE JSON: ", err)
-		http.Error(w, err.Error(), http.StatusBadRequest)
+		slog.Warn("failed to decode user request", "error", err)
+		http.Error(w, "invalid request", http.StatusBadRequest)
 		return
 	}
 
 	userID, ok := r.Context().Value(contextKeyUserID).(float64)
 	if !ok {
-		http.Error(w, "cannot get userID", http.StatusUnauthorized)
+		slog.Warn("failed to get user id from context")
+		http.Error(w, "invalid request", http.StatusUnauthorized)
 		return
 	}
 	monitor.UserID = int(userID)
 	err = app.DB.InsertMonitor(monitor)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		slog.Error("user failed to insert monitor to database", "error", err)
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
 		return
 	}
 
 	response := jsonResponse{
 		Status:  "success",
-		Message: "monitor creted",
+		Message: "monitor created",
 	}
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusCreated)
 	err = json.NewEncoder(w).Encode(&response)
 	if err != nil {
-		log.Println("Error encoding response", err)
+		slog.Error("failed to encoding json response to user", "error", err)
 		return
 	}
 }
@@ -49,12 +51,14 @@ func (app *Application) CreateMonitor(w http.ResponseWriter, r *http.Request) {
 func (app *Application) ListMonitors(w http.ResponseWriter, r *http.Request) {
 	userID, ok := r.Context().Value(contextKeyUserID).(float64)
 	if !ok {
-		http.Error(w, "cannot get user id", http.StatusUnauthorized)
+		slog.Warn("failed to get user id from context")
+		http.Error(w, "invalid request", http.StatusUnauthorized)
 		return
 	}
 	monitors, err := app.DB.GetAllMonitorByUserID(int(userID))
 	if err != nil {
-		http.Error(w, "monitor not found", http.StatusInternalServerError)
+		slog.Error("user failed to get all monitor by user id", "error", err)
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
 		return
 	}
 
@@ -67,7 +71,7 @@ func (app *Application) ListMonitors(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
 	err = json.NewEncoder(w).Encode(response)
 	if err != nil {
-		log.Println("error encoding response", err)
+		slog.Error("failed to encoding json response to user", "error", err)
 		return
 	}
 
@@ -77,19 +81,22 @@ func (app *Application) ShowMonitor(w http.ResponseWriter, r *http.Request) {
 	idStr := r.PathValue("id")
 	monitorID, err := strconv.Atoi(idStr)
 	if err != nil {
-		http.Error(w, "invalid monitor id", http.StatusBadRequest)
+		slog.Warn("failed to parsing path value to int")
+		http.Error(w, "invalid request", http.StatusBadRequest)
 		return
 	}
 
 	userID, ok := r.Context().Value(contextKeyUserID).(float64)
 	if !ok {
-		http.Error(w, "cannot get userID", http.StatusUnauthorized)
+		slog.Warn("failed to get user id from context")
+		http.Error(w, "invalid request", http.StatusUnauthorized)
 		return
 	}
 
 	monitor, err := app.DB.GetMonitorByID(monitorID, int(userID))
 	if err != nil {
-		http.Error(w, "monitor not found", http.StatusInternalServerError)
+		slog.Warn("user failed to get monitor by user id", "error", err)
+		http.Error(w, "monitor not found", http.StatusNotFound)
 		return
 	}
 
@@ -102,7 +109,7 @@ func (app *Application) ShowMonitor(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
 	err = json.NewEncoder(w).Encode(response)
 	if err != nil {
-		log.Println("error encoding response", err)
+		slog.Error("failed to encoding json response to user", "error", err)
 		return
 	}
 }
@@ -111,34 +118,44 @@ func (app *Application) UpdateMonitor(w http.ResponseWriter, r *http.Request) {
 	r.Body = http.MaxBytesReader(w, r.Body, maxBytes)
 
 	idStr := r.PathValue("id")
-	id, err := strconv.Atoi(idStr)
+	monitorID, err := strconv.Atoi(idStr)
 	if err != nil {
-		http.Error(w, "invalid path value", http.StatusBadRequest)
+		slog.Warn("failed to parsing path value to int")
+		http.Error(w, "invalid request", http.StatusBadRequest)
 		return
 	}
+
 	userID, ok := r.Context().Value(contextKeyUserID).(float64)
 	if !ok {
-		http.Error(w, "cannot get user id", http.StatusUnauthorized)
+		slog.Warn("failed to get user id from context")
+		http.Error(w, "invalid request", http.StatusUnauthorized)
 		return
 	}
 
-	monitor, err := app.DB.GetMonitorByID(id, int(userID))
-	if err != nil {
-		http.Error(w, "cannot get monitor by id", http.StatusInternalServerError)
-		return
-	}
-
+	var monitor models.Monitor
 	decode := json.NewDecoder(r.Body)
 	decode.DisallowUnknownFields()
 	err = decode.Decode(&monitor)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
+		slog.Warn("failed to decode user request", "error", err)
+		http.Error(w, "invalid request", http.StatusBadRequest)
+		return
+	}
+
+	monitor.ID = monitorID
+	monitor.UserID = int(userID)
+
+	_, err = app.DB.GetMonitorByID(monitorID, int(userID))
+	if err != nil {
+		slog.Warn("user failed to get monitor by user id", "error", err)
+		http.Error(w, "monitor not found", http.StatusNotFound)
 		return
 	}
 
 	err = app.DB.UpdateMonitorByID(monitor.ID, monitor.UserID, monitor.CheckInterval, monitor.Url)
 	if err != nil {
-		http.Error(w, "monitor not found or server error", http.StatusInternalServerError)
+		slog.Error("user cannot update monitor by id from database", "error", err)
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
 		return
 	}
 
@@ -152,7 +169,7 @@ func (app *Application) UpdateMonitor(w http.ResponseWriter, r *http.Request) {
 
 	err = json.NewEncoder(w).Encode(response)
 	if err != nil {
-		log.Println("error encoding response", err)
+		slog.Error("failed to encoding json response to user", "error", err)
 		return
 	}
 }
@@ -161,19 +178,21 @@ func (app *Application) DeleteMonitor(w http.ResponseWriter, r *http.Request) {
 	idStr := r.PathValue("id")
 	id, err := strconv.Atoi(idStr)
 	if err != nil {
-		http.Error(w, "invalid path value", http.StatusBadRequest)
+		slog.Warn("failed to parsing path value to int")
+		http.Error(w, "invalid request", http.StatusBadRequest)
 		return
 	}
 
 	userID, ok := r.Context().Value(contextKeyUserID).(float64)
 	if !ok {
-		http.Error(w, "cannot get user id", http.StatusUnauthorized)
+		slog.Warn("failed to get user id from context")
+		http.Error(w, "invalid request", http.StatusUnauthorized)
 		return
 	}
-
 	err = app.DB.DeleteMonitorByID(id, int(userID))
 	if err != nil {
-		http.Error(w, "monitor not found or server error", http.StatusInternalServerError)
+		slog.Error("failed to delete monitor by id from database", "error", err)
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
 		return
 	}
 
@@ -185,7 +204,7 @@ func (app *Application) DeleteMonitor(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
 	err = json.NewEncoder(w).Encode(response)
 	if err != nil {
-		log.Println("error encoding response", err)
+		slog.Error("failed to encoding json response to user", "error", err)
 		return
 	}
 }

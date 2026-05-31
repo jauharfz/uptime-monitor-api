@@ -2,6 +2,7 @@ package api
 
 import (
 	"encoding/json"
+	"log/slog"
 	"net/http"
 )
 
@@ -14,7 +15,8 @@ func (app *Application) HealthTest(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
 	err := json.NewEncoder(w).Encode(resp)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		slog.Error("failed to encoding response json", "error", err)
+		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
 		return
 	}
 }

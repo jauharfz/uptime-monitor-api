@@ -2,7 +2,7 @@ package config
 
 import (
 	"bufio"
-	"log"
+	"log/slog"
 	"os"
 	"strings"
 )
@@ -10,7 +10,7 @@ import (
 func LoadEnv(filename string) error {
 	file, err := os.Open(filename)
 	if err != nil {
-		log.Println("Cannot Open Environment Variables")
+		slog.Error("failed to open file", "error", err)
 		return err
 	}
 	defer file.Close()
