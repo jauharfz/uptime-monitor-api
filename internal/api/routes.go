@@ -20,6 +20,7 @@ func Routes(app *Application) http.Handler {
 	protectedMux.HandleFunc("PATCH /monitor/{id}", app.UpdateMonitor)
 	protectedMux.HandleFunc("DELETE /monitor/{id}", app.DeleteMonitor)
 	protectedMux.HandleFunc("GET /monitor/{id}/checks", app.CheckMonitor)
+	protectedMux.HandleFunc("GET /monitor/{id}/stats", app.ShowMonitorStats)
 
 	mux.Handle("/", app.RequireAuth(protectedMux))
 

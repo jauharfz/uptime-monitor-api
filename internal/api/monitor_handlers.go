@@ -81,7 +81,7 @@ func (app *Application) ShowMonitor(w http.ResponseWriter, r *http.Request) {
 	idStr := r.PathValue("id")
 	monitorID, err := strconv.Atoi(idStr)
 	if err != nil {
-		slog.Warn("failed to parsing path value to int")
+		slog.Warn("failed parsing path value to int")
 		http.Error(w, "invalid request", http.StatusBadRequest)
 		return
 	}
@@ -120,7 +120,7 @@ func (app *Application) UpdateMonitor(w http.ResponseWriter, r *http.Request) {
 	idStr := r.PathValue("id")
 	monitorID, err := strconv.Atoi(idStr)
 	if err != nil {
-		slog.Warn("failed to parsing path value to int")
+		slog.Warn("failed parsing path value to int")
 		http.Error(w, "invalid request", http.StatusBadRequest)
 		return
 	}
@@ -178,7 +178,7 @@ func (app *Application) DeleteMonitor(w http.ResponseWriter, r *http.Request) {
 	idStr := r.PathValue("id")
 	id, err := strconv.Atoi(idStr)
 	if err != nil {
-		slog.Warn("failed to parsing path value to int")
+		slog.Warn("failed parsing path value to int")
 		http.Error(w, "invalid request", http.StatusBadRequest)
 		return
 	}

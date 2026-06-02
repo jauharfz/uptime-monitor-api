@@ -14,3 +14,9 @@ type Monitor struct {
 	UpdatedAt     time.Time    `json:"updated_at"`
 	LastCheckedAt sql.NullTime `json:"last_checked_at"`
 }
+
+type MonitorStats struct {
+	TotalChecks      string
+	AvgResponseTime  string
+	UptimePercentage string
+}

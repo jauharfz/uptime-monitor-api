@@ -111,3 +111,23 @@ func (s *PostgresStore) UpdateLastCheckedMonitor(id int) error {
 	}
 	return nil
 }
+
+// total checks, uptime precentage,avg response time
+func (s *PostgresStore) GetMonitorStatsById(monitorID int) (models.MonitorStats, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*3)
+	defer cancel()
+
+	query := `SELECT COUNT(id) AS total_checks, 
+		COALESCE(AVG(response_time),0) AS avg_response_time,
+		COALESCE ( COUNT(id) FILTER(WHERE status_code >= 200 AND status_code < 300)::FLOAT/NULLIF(COUNT(id),0)*100,0) as uptime_percentage
+		FROM checks WHERE monitor_id = $1`
+
+	var stats models.MonitorStats
+
+	rows := s.DB.QueryRowContext(ctx, query, monitorID)
+	err := rows.Scan(&stats.TotalChecks, &stats.AvgResponseTime, &stats.UptimePercentage)
+	if err != nil {
+		return stats, err
+	}
+	return stats, nil
+}
