@@ -40,6 +40,7 @@
 - PATCH /monitor/{id} - update monitor (url, check_interval)
 - DELETE /monitor/{id} - delete monitor
 - GET /monitor/{id}/checks - get last 50 checks for monitor
+- GET /monitor/{id}/stats - get detail stats for monitor
 
 ## Architecture
 

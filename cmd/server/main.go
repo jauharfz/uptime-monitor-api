@@ -34,7 +34,12 @@ func main() {
 	}
 	addr := ":" + port
 
-	conn, err := sql.Open("pgx", os.Getenv("DATABASE_URL"))
+	dbUrl := os.Getenv("DATABASE_URL")
+	if dbUrl == "" {
+		dbUrl = "postgres://postgres:1234567k@localhost:5454/uptime_monitor?sslmode=disable"
+	}
+
+	conn, err := sql.Open("pgx", dbUrl)
 	if err != nil {
 		slog.Error("unable to connect database", "error", err)
 		os.Exit(1)
