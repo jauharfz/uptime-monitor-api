@@ -6,12 +6,12 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"errors"
+	"os"
 	"strings"
 	"time"
-	"uptime-monitor/internal/config"
 )
 
-var secretKey = config.LoadEnv("JWT_SECRET")
+var secretKey = []byte(os.Getenv("JWT_SECRET"))
 
 func GenerateJWT(userID int) (string, error) {
 	header := map[string]string{
