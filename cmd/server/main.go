@@ -11,6 +11,7 @@ import (
 	"syscall"
 	"time"
 	"uptime-monitor/internal/api"
+	"uptime-monitor/internal/auth"
 	"uptime-monitor/internal/config"
 	"uptime-monitor/internal/storage"
 	"uptime-monitor/internal/worker"
@@ -38,6 +39,12 @@ func main() {
 	if dbUrl == "" {
 		dbUrl = "postgres://postgres:1234567k@localhost:5454/uptime_monitor?sslmode=disable"
 	}
+	jwtSecret := os.Getenv("JWT_SECRET")
+	if jwtSecret == "" {
+		slog.Error("failed to get jwt secret from environment", "error", err)
+		os.Exit(1)
+	}
+	auth.SetSecret(jwtSecret)
 
 	conn, err := sql.Open("pgx", dbUrl)
 	if err != nil {

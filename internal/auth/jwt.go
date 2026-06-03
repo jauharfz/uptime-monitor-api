@@ -6,12 +6,17 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"errors"
-	"os"
+	"fmt"
+	"log/slog"
 	"strings"
 	"time"
 )
 
-var secretKey = []byte(os.Getenv("JWT_SECRET"))
+var secretKey []byte
+
+func SetSecret(jwtSecret string) {
+	secretKey = []byte(jwtSecret)
+}
 
 func GenerateJWT(userID int) (string, error) {
 	header := map[string]string{
@@ -43,6 +48,8 @@ func GenerateJWT(userID int) (string, error) {
 }
 
 func Verify(token string) (map[string]interface{}, error) {
+	slog.Info("secret key", secretKey)
+	fmt.Println(secretKey)
 	parts := strings.Split(token, ".")
 	if len(parts) != 3 {
 		return nil, errors.New("invalid error format")
