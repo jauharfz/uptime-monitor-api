@@ -16,7 +16,7 @@ type Monitor struct {
 }
 
 type MonitorStats struct {
-	TotalChecks      string `json:"total_checks"`
-	AvgResponseTime  string `json:"avg_response_time"`
-	UptimePercentage string `json:"uptime_percentage"`
+	TotalChecks      int     `json:"total_checks"`
+	AvgResponseTime  float64 `json:"avg_response_time"`
+	UptimePercentage float64 `json:"uptime_percentage"`
 }

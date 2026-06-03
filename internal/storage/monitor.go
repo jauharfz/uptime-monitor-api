@@ -28,7 +28,7 @@ func (s *PostgresStore) GetAllMonitorByUserID(userID int) ([]models.Monitor, err
 		monitors = append(monitors, monitor)
 	}
 	if rows.Err() != nil {
-		return nil, err
+		return nil, rows.Err()
 	}
 	return monitors, nil
 }

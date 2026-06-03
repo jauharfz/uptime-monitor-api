@@ -27,7 +27,7 @@ func (s *PostgresStore) GetAllMonitors() ([]models.Monitor, error) {
 		monitors = append(monitors, monitor)
 	}
 	if rows.Err() != nil {
-		return monitors, err
+		return monitors, rows.Err()
 	}
 	return monitors, nil
 }
@@ -66,7 +66,7 @@ func (s *PostgresStore) GetChecksByMonitorID(id int) ([]models.Check, error) {
 		checks = append(checks, check)
 	}
 	if rows.Err() != nil {
-		return checks, err
+		return checks, rows.Err()
 	}
 	return checks, nil
 }
@@ -94,7 +94,7 @@ func (s *PostgresStore) GetMonitorsDueForCheck() ([]models.Monitor, error) {
 		monitors = append(monitors, monitor)
 	}
 	if rows.Err() != nil {
-		return nil, err
+		return nil, rows.Err()
 	}
 	return monitors, nil
 }
@@ -117,7 +117,7 @@ func (s *PostgresStore) GetMonitorStatsById(monitorID int) (models.MonitorStats,
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*3)
 	defer cancel()
 
-	query := `SELECT COUNT(id) AS total_checks, 
+	query := `SELECT COUNT(id) AS total_checks,
 		COALESCE(AVG(response_time),0) AS avg_response_time,
 		COALESCE ( COUNT(id) FILTER(WHERE status_code >= 200 AND status_code < 300)::FLOAT/NULLIF(COUNT(id),0)*100,0) as uptime_percentage
 		FROM checks WHERE monitor_id = $1`
