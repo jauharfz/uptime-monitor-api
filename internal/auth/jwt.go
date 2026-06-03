@@ -8,9 +8,10 @@ import (
 	"errors"
 	"strings"
 	"time"
+	"uptime-monitor/internal/config"
 )
 
-var secretKey = []byte("inilah-my-secret-key->///<")
+var secretKey = config.LoadEnv("JWT_SECRET")
 
 func GenerateJWT(userID int) (string, error) {
 	header := map[string]string{
