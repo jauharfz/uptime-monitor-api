@@ -1,0 +1,38 @@
+# Benchmark overlay for the scheduling-strategy experiment.
+# Use together with the base file:
+#   docker compose -f docker-compose.yml -f docker-compose.bench.yml up -d --build
+#
+# It (1) enables pg_stat_statements so the query-driven DB overhead is
+# measurable, (2) adds an in-cluster `echo` probe target reachable at
+# http://echo:9000/, and (3) wires the SCHEDULER / TICK_INTERVAL switch into the
+# api from host environment variables.
+services:
+    db:
+        command:
+            - "postgres"
+            - "-c"
+            - "shared_preload_libraries=pg_stat_statements"
+            - "-c"
+            - "pg_stat_statements.track=all"
+
+    echo:
+        build:
+            context: .
+            dockerfile: Dockerfile.echo
+        environment:
+            - ECHO_PORT=9000
+            - ECHO_LATENCY=0s
+        restart: unless-stopped
+
+    api:
+        environment:
+            - DATABASE_URL=postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB}?sslmode=disable
+            - JWT_SECRET=${JWT_SECRET}
+            - PORT=${PORT}
+            - SCHEDULER=${SCHEDULER:-query}
+            - TICK_INTERVAL=${TICK_INTERVAL:-5s}
+        depends_on:
+            db:
+                condition: service_healthy
+            echo:
+                condition: service_started

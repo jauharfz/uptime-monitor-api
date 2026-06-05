@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"strings"
 	"sync"
 	"syscall"
 	"time"
@@ -68,8 +69,28 @@ func main() {
 	defer stop()
 
 	var wg sync.WaitGroup
+
+	// Scheduling granularity for the query-driven strategy (the accuracy/DB-load
+	// knob). Default 5s preserves the original behaviour.
+	tick := 5 * time.Second
+	if v := os.Getenv("TICK_INTERVAL"); v != "" {
+		if d, parseErr := time.ParseDuration(v); parseErr == nil && d > 0 {
+			tick = d
+		} else {
+			slog.Warn("invalid TICK_INTERVAL, using default", "value", v, "default", tick.String())
+		}
+	}
+
+	// SCHEDULER selects which scheduling strategy the background worker runs.
+	// This is the single switch point for the comparative experiment; the rest
+	// of the application (API, storage, schema) is identical for both.
 	wg.Add(1)
-	go worker.StartWorker(ctx, &wg, repo)
+	switch strings.ToLower(os.Getenv("SCHEDULER")) {
+	case "inmemory", "in-memory":
+		go worker.StartInMemoryWorker(ctx, &wg, repo)
+	default: // "query", "query-driven", or empty -> original behaviour
+		go worker.StartWorker(ctx, &wg, repo, tick)
+	}
 
 	wg.Add(1)
 	srv := &http.Server{

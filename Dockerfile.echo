@@ -1,0 +1,22 @@
+# Build image for the benchmark echo target (cmd/echo). Kept separate from the
+# main server Dockerfile so the normal build/deploy is unchanged.
+FROM golang:1.26-alpine AS builder
+
+WORKDIR /app
+
+COPY go.mod go.sum ./
+RUN go mod download
+
+COPY . .
+
+RUN CGO_ENABLED=0 GOOS=linux go build -o echo ./cmd/echo/
+
+FROM alpine:latest
+
+WORKDIR /app
+
+COPY --from=builder /app/echo .
+
+EXPOSE 9000
+
+CMD ["./echo"]
