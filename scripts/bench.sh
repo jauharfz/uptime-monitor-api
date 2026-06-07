@@ -10,7 +10,7 @@
 #   DURATION=120 NS="10 100" ./scripts/bench.sh
 set -euo pipefail
 
-STRATEGIES=(${STRATEGIES:-query inmemory})
+STRATEGIES=(${STRATEGIES:-polling inmemory})
 NS=(${NS:-10 100 1000 5000})
 DURATION=${DURATION:-600}
 INTERVAL=${INTERVAL:-30}

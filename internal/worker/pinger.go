@@ -25,13 +25,13 @@ func Ping(targetURL string) (int, time.Duration, error) {
 	return resp.StatusCode, elapsed, nil
 }
 
-// StartWorker runs the query-driven (stateless) scheduling strategy: on every
-// tick it asks the database which monitors are due and checks them. All
+// StartPollingWorker runs the database-polling (stateless) scheduling strategy:
+// on every tick it asks the database which monitors are due and checks them. All
 // scheduling state lives in the monitors.last_checked_at column, never in
 // process memory. The tick duration is the scheduling granularity knob.
-func StartWorker(ctx context.Context, wg *sync.WaitGroup, app *api.Application, tick time.Duration) {
+func StartPollingWorker(ctx context.Context, wg *sync.WaitGroup, app *api.Application, tick time.Duration) {
 	defer wg.Done()
-	slog.Info("worker started", "strategy", "query-driven", "tick", tick.String())
+	slog.Info("worker started", "strategy", "polling", "tick", tick.String())
 	ticker := time.NewTicker(tick)
 	defer ticker.Stop()
 	for {

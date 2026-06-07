@@ -19,7 +19,7 @@ SELECT count(*)                                                                 
 FROM ordered
 WHERE prev IS NOT NULL;
 
--- 2) Database scheduling overhead (Tabel 3): how many times the query-driven
+-- 2) Database scheduling overhead (Tabel 3): how many times the polling
 --    "due" query ran. For the in-memory strategy this returns no rows (0).
 --    Requires the pg_stat_statements extension (enabled by the bench overlay).
 CREATE EXTENSION IF NOT EXISTS pg_stat_statements;

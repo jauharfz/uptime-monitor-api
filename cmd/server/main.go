@@ -70,7 +70,7 @@ func main() {
 
 	var wg sync.WaitGroup
 
-	// Scheduling granularity for the query-driven strategy (the accuracy/DB-load
+	// Scheduling granularity for the polling strategy (the accuracy/DB-load
 	// knob). Default 5s preserves the original behaviour.
 	tick := 5 * time.Second
 	if v := os.Getenv("TICK_INTERVAL"); v != "" {
@@ -88,8 +88,8 @@ func main() {
 	switch strings.ToLower(os.Getenv("SCHEDULER")) {
 	case "inmemory", "in-memory":
 		go worker.StartInMemoryWorker(ctx, &wg, repo)
-	default: // "query", "query-driven", or empty -> original behaviour
-		go worker.StartWorker(ctx, &wg, repo, tick)
+	default: // "polling" (default); "query"/"query-driven" accepted as aliases
+		go worker.StartPollingWorker(ctx, &wg, repo, tick)
 	}
 
 	wg.Add(1)

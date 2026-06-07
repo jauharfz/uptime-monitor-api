@@ -20,7 +20,7 @@
 #>
 [CmdletBinding()]
 param(
-    [string[]] $Strategies = @('query', 'inmemory'),
+    [string[]] $Strategies = @('polling', 'inmemory'),
     [int[]]    $Ns = @(10, 100, 1000, 5000),
     [int]      $DurationSec = 600,
     [int]      $IntervalSec = 30,

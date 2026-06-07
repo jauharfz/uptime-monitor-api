@@ -2,7 +2,7 @@
 # Use together with the base file:
 #   docker compose -f docker-compose.yml -f docker-compose.bench.yml up -d --build
 #
-# It (1) enables pg_stat_statements so the query-driven DB overhead is
+# It (1) enables pg_stat_statements so the polling DB overhead is
 # measurable, (2) adds an in-cluster `echo` probe target reachable at
 # http://echo:9000/, and (3) wires the SCHEDULER / TICK_INTERVAL switch into the
 # api from host environment variables.
@@ -29,7 +29,7 @@ services:
             - DATABASE_URL=postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB}?sslmode=disable
             - JWT_SECRET=${JWT_SECRET}
             - PORT=${PORT}
-            - SCHEDULER=${SCHEDULER:-query}
+            - SCHEDULER=${SCHEDULER:-polling}
             - TICK_INTERVAL=${TICK_INTERVAL:-5s}
         depends_on:
             db:

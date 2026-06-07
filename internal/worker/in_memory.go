@@ -14,7 +14,7 @@ import (
 // time.Timer per monitor. Each timer fires independently at the monitor's
 // check_interval, runs the check, then resets itself.
 //
-// Contrast with StartWorker (query-driven): here the scheduling state (the
+// Contrast with StartPollingWorker (database polling): here the scheduling state (the
 // per-target timers) lives entirely in process memory. Memory therefore grows
 // O(N) with the number of monitors, and ALL scheduling state is lost when the
 // process stops — on restart the timers must be rebuilt from the database.
