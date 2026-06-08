@@ -61,17 +61,7 @@ func runMonitorTimer(ctx context.Context, app *api.Application, m models.Monitor
 		case <-ctx.Done():
 			return
 		case <-timer.C:
-			status, duration, err := Ping(m.Url)
-			if err != nil {
-				slog.Warn("in-memory worker: failed to ping monitor url", "url", m.Url, "error", err)
-				status = 0
-			}
-			if err := app.DB.InsertCheck(m.ID, status, int(duration.Milliseconds())); err != nil {
-				slog.Error("in-memory worker: failed to insert check", "url", m.Url, "error", err)
-			}
-			if err := app.DB.UpdateLastCheckedMonitor(m.ID); err != nil {
-				slog.Error("in-memory worker: failed to update last_checked_at", "url", m.Url, "error", err)
-			}
+			checkAndStore(app, m)
 			timer.Reset(interval)
 		}
 	}

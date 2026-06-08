@@ -61,6 +61,12 @@ func main() {
 	}
 	slog.Info("connected to database")
 
+	// Bound the connection pool so a burst of concurrent checks cannot exhaust
+	// PostgreSQL connections (default max_connections is 100).
+	conn.SetMaxOpenConns(60)
+	conn.SetMaxIdleConns(20)
+	conn.SetConnMaxIdleTime(5 * time.Minute)
+
 	db := storage.NewPostgresStore(conn)
 	repo := api.NewApplication(db)
 	handler := api.Routes(repo)
