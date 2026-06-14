@@ -16,7 +16,6 @@ func (app *Application) HealthTest(w http.ResponseWriter, r *http.Request) {
 	err := json.NewEncoder(w).Encode(resp)
 	if err != nil {
 		slog.Error("failed to encoding response json", "error", err)
-		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
 		return
 	}
 }
