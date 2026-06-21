@@ -1,20 +1,22 @@
 #!/usr/bin/env bash
-# Run the scheduling-strategy benchmark end to end (Linux / Azure VM / WSL).
+# Tick-granularity sensitivity sweep for the polling strategy.
 #
-# For each (strategy x N): seed N monitors, (re)start the api with that strategy
-# so it loads them, sample the api container peak memory + CPU via `docker stats`
-# for $DURATION seconds, then compute mean scheduling drift from the checks table.
+# Fixes the strategy (polling) and the number of monitors (N), then varies the
+# scheduling tick. For each tick it seeds N monitors, (re)starts the api with
+# that tick, samples the api container memory + CPU for $DURATION seconds, then
+# computes mean scheduling drift and the number of polling "due" queries. This
+# isolates the tick as the only independent variable, so its effect on accuracy
+# (drift) and database read load (queries/min) can be characterised directly.
 #
-# Run from the repo root. Requires Docker, curl, awk, and a .env file.
+# Run from the repo root, AFTER the stack images are built (or it builds them).
 # Override via env vars, e.g.:
-#   DURATION=120 NS="10 100" ./scripts/bench.sh
+#   DURATION=120 N=1000 TICKS="1s 5s" ./scripts/bench_tick.sh
 set -euo pipefail
 
-STRATEGIES=(${STRATEGIES:-polling inmemory})
-NS=(${NS:-10 100 1000 10000})
+TICKS=(${TICKS:-1s 2s 5s 10s})
+N=${N:-1000}
 DURATION=${DURATION:-600}
 INTERVAL=${INTERVAL:-30}
-TICK=${TICK:-5s}
 SAMPLE=${SAMPLE:-5}
 HEALTH=${HEALTH:-http://127.0.0.1:8080/health}
 
@@ -68,29 +70,28 @@ $COMPOSE up -d db echo
 wait_db
 psql_exec 'CREATE EXTENSION IF NOT EXISTS pg_stat_statements;'
 
-CSV="scripts/bench_results.csv"
-echo "strategy,N,drift_ms,peak_mem_mib,avg_cpu_pct,max_cpu_pct,due_query_calls" > "$CSV"
-printf "%-9s %-6s %-9s %-13s %-11s %-11s %-9s\n" strategy N drift_ms peak_mem_MiB avg_cpu_% max_cpu_% due_calls
+CSV="scripts/bench_tick_results.csv"
+echo "tick,N,drift_ms,peak_mem_mib,avg_cpu_pct,max_cpu_pct,due_query_calls,queries_per_min" > "$CSV"
+printf "%-6s %-6s %-9s %-13s %-11s %-11s %-10s %-12s\n" tick N drift_ms peak_mem_MiB avg_cpu_% max_cpu_% due_calls queries/min
 
-for strategy in "${STRATEGIES[@]}"; do
-  for n in "${NS[@]}"; do
-    echo "== strategy=$strategy N=$n (running ${DURATION}s) ==" >&2
-    $COMPOSE stop api >/dev/null 2>&1 || true
-    psql_exec 'SELECT pg_stat_statements_reset();'
-    cat scripts/seed.sql | $COMPOSE exec -T db sh -c "psql -U \"\$POSTGRES_USER\" -d \"\$POSTGRES_DB\" -q -v n=$n -v interval=$INTERVAL" >/dev/null
+for tick in "${TICKS[@]}"; do
+  echo "== tick=$tick N=$N strategy=polling (running ${DURATION}s) ==" >&2
+  $COMPOSE stop api >/dev/null 2>&1 || true
+  psql_exec 'SELECT pg_stat_statements_reset();'
+  cat scripts/seed.sql | $COMPOSE exec -T db sh -c "psql -U \"\$POSTGRES_USER\" -d \"\$POSTGRES_DB\" -q -v n=$N -v interval=$INTERVAL" >/dev/null
 
-    SCHEDULER="$strategy" TICK_INTERVAL="$TICK" $COMPOSE up -d --force-recreate --no-deps api >/dev/null
-    wait_api
+  SCHEDULER="polling" TICK_INTERVAL="$tick" $COMPOSE up -d --force-recreate --no-deps api >/dev/null
+  wait_api
 
-    cid=$($COMPOSE ps -q api | tr -d '[:space:]')
-    sample "$cid" "$DURATION" "$SAMPLE"
+  cid=$($COMPOSE ps -q api | tr -d '[:space:]')
+  sample "$cid" "$DURATION" "$SAMPLE"
 
-    drift=$(cat scripts/q_drift.sql | psql_stdin "-tA" | tr -d '[:space:]')
-    due=$(cat scripts/q_duecalls.sql | psql_stdin "-tA" | tr -d '[:space:]')
+  drift=$(cat scripts/q_drift.sql | psql_stdin "-tA" | tr -d '[:space:]')
+  due=$(cat scripts/q_duecalls.sql | psql_stdin "-tA" | tr -d '[:space:]')
+  qpm=$(awk -v d="$due" -v dur="$DURATION" 'BEGIN{ if(dur>0) printf "%.1f", d/(dur/60); else print 0 }')
 
-    printf "%-9s %-6s %-9s %-13s %-11s %-11s %-9s\n" "$strategy" "$n" "$drift" "$PEAK_MEM" "$AVG_CPU" "$MAX_CPU" "$due"
-    echo "$strategy,$n,$drift,$PEAK_MEM,$AVG_CPU,$MAX_CPU,$due" >> "$CSV"
-  done
+  printf "%-6s %-6s %-9s %-13s %-11s %-11s %-10s %-12s\n" "$tick" "$N" "$drift" "$PEAK_MEM" "$AVG_CPU" "$MAX_CPU" "$due" "$qpm"
+  echo "$tick,$N,$drift,$PEAK_MEM,$AVG_CPU,$MAX_CPU,$due,$qpm" >> "$CSV"
 done
 
 $COMPOSE stop api >/dev/null 2>&1 || true
