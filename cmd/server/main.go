@@ -68,8 +68,9 @@ func main() {
 	defer stop()
 
 	var wg sync.WaitGroup
+	worker := worker.NewWorker(db)
 	wg.Add(1)
-	go worker.StartWorker(ctx, &wg, repo)
+	go worker.StartWorker(ctx, &wg)
 
 	wg.Add(1)
 	srv := &http.Server{
