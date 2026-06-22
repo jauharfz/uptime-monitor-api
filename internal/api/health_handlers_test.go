@@ -6,12 +6,15 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"testing"
+	"time"
 )
 
 var app = &Application{}
 
 func TestApplication_HealthTest(t *testing.T) {
-	r, err := http.NewRequest("GET", "/health", nil)
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	r, err := http.NewRequestWithContext(ctx, http.MethodGet, "/health", nil)
 	if err != nil {
 		t.Fatalf("failed to create request: %v", err)
 	}
