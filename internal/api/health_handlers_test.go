@@ -9,8 +9,6 @@ import (
 	"time"
 )
 
-var app = &Application{}
-
 func TestApplication_HealthTest(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
@@ -39,8 +37,4 @@ func TestApplication_HealthTest(t *testing.T) {
 	if response.Message != "health tested" {
 		t.Errorf("test failed. expected: health tested, result: %s", response.Message)
 	}
-}
-
-func getCtx(r *http.Request) context.Context {
-	return context.WithValue(r.Context(), contextKeyUserID, r.Header.Get("X-Session"))
 }
