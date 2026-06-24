@@ -83,3 +83,80 @@ func TestApplication_CreateMonitor(t *testing.T) {
 
 // TODO:refactor context value type assertion to int
 // TODO:write the rest of monitor handlers
+
+func TestApplication_ListMonitors(t *testing.T) {
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	r, err := http.NewRequestWithContext(ctx, http.MethodGet, "/monitor", nil)
+	if err != nil {
+		t.Fatalf("failed to create new request %v", err)
+	}
+
+	user := models.User{
+		Username: "testListMonitors",
+		Password: "passwordListMonitors",
+		Email:    "testListMonitors@example.com",
+	}
+
+	err = app.DB.InsertUser(user)
+	if err != nil {
+		t.Fatalf("failed to insert user %v", err)
+	}
+	user, err = app.DB.GetUserByEmail(user.Email)
+	if err != nil {
+		t.Fatalf("failed to get user by email %v", err)
+	}
+	monitor1 := models.Monitor{
+		UserID:        user.ID,
+		Url:           "google.com",
+		CheckInterval: 5,
+	}
+	monitor2 := models.Monitor{
+		UserID:        user.ID,
+		Url:           "yahoo.com",
+		CheckInterval: 10,
+	}
+
+	err = app.DB.InsertMonitor(monitor1)
+	if err != nil {
+		t.Fatalf("failed to insert monitor %v", err)
+	}
+	err = app.DB.InsertMonitor(monitor2)
+	if err != nil {
+		t.Fatalf("failed to insert monitor %v", err)
+	}
+
+	ctx = context.WithValue(r.Context(), contextKeyUserID, user.ID)
+	r = r.WithContext(ctx)
+	rr := httptest.NewRecorder()
+	handlers := http.HandlerFunc(app.ListMonitors)
+	handlers.ServeHTTP(rr, r)
+	if rr.Code != http.StatusOK {
+		t.Errorf("test failed, expected: %d, result: %d", http.StatusOK, rr.Code)
+	}
+
+	var response struct {
+		Status  string           `json:"status"`
+		Message string           `json:"message"`
+		Data    []models.Monitor `json:"data"`
+	}
+	err = json.NewDecoder(rr.Body).Decode(&response)
+	if err != nil {
+		t.Errorf("failed to decode response json %v", err)
+	}
+
+	if response.Status != "success" {
+		t.Errorf("test failed, expected: success, result: %s", response.Status)
+	}
+	if response.Message != "get all user monitors" {
+		t.Errorf("test failed, expected: get all user monitors, result: %s", response.Message)
+	}
+
+	if len(response.Data) != 2 {
+		t.Errorf("test failed, expected: %d, result: %d", 2, len(response.Data))
+	}
+	if response.Data[0].Url != monitor1.Url {
+		t.Errorf("test failed, expected: %s, result: %s", monitor1.Url, response.Data[0].Url)
+	}
+}
