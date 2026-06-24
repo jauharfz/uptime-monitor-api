@@ -21,7 +21,7 @@ func (app *Application) CreateMonitor(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	userID, ok := r.Context().Value(contextKeyUserID).(float64)
+	userID, ok := r.Context().Value(contextKeyUserID).(int)
 	if !ok {
 		slog.Warn("failed to get user id from context")
 		http.Error(w, "invalid request", http.StatusUnauthorized)
@@ -49,7 +49,7 @@ func (app *Application) CreateMonitor(w http.ResponseWriter, r *http.Request) {
 }
 
 func (app *Application) ListMonitors(w http.ResponseWriter, r *http.Request) {
-	userID, ok := r.Context().Value(contextKeyUserID).(float64)
+	userID, ok := r.Context().Value(contextKeyUserID).(int)
 	if !ok {
 		slog.Warn("failed to get user id from context")
 		http.Error(w, "invalid request", http.StatusUnauthorized)
@@ -86,7 +86,7 @@ func (app *Application) ShowMonitor(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	userID, ok := r.Context().Value(contextKeyUserID).(float64)
+	userID, ok := r.Context().Value(contextKeyUserID).(int)
 	if !ok {
 		slog.Warn("failed to get user id from context")
 		http.Error(w, "invalid request", http.StatusUnauthorized)
@@ -125,7 +125,7 @@ func (app *Application) UpdateMonitor(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	userID, ok := r.Context().Value(contextKeyUserID).(float64)
+	userID, ok := r.Context().Value(contextKeyUserID).(int)
 	if !ok {
 		slog.Warn("failed to get user id from context")
 		http.Error(w, "invalid request", http.StatusUnauthorized)
@@ -183,7 +183,7 @@ func (app *Application) DeleteMonitor(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	userID, ok := r.Context().Value(contextKeyUserID).(float64)
+	userID, ok := r.Context().Value(contextKeyUserID).(int)
 	if !ok {
 		slog.Warn("failed to get user id from context")
 		http.Error(w, "invalid request", http.StatusUnauthorized)

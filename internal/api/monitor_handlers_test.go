@@ -57,9 +57,8 @@ func TestApplication_CreateMonitor(t *testing.T) {
 		t.Fatalf("failed to get user by email")
 	}
 
-	// r = r.WithContext(getCtx(r))
 	r.Header.Set("Content-Type", "application/json")
-	ctx = context.WithValue(r.Context(), contextKeyUserID, float64(user.ID))
+	ctx = context.WithValue(r.Context(), contextKeyUserID, user.ID)
 	r = r.WithContext(ctx)
 	rr := httptest.NewRecorder()
 	handlers := http.HandlerFunc(app.CreateMonitor)
@@ -81,3 +80,6 @@ func TestApplication_CreateMonitor(t *testing.T) {
 		t.Errorf("test failed, expected: monitor created, result: %s", response.Message)
 	}
 }
+
+// TODO:refactor context value type assertion to int
+// TODO:write the rest of monitor handlers

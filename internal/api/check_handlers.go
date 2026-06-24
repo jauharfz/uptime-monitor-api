@@ -16,7 +16,7 @@ func (app *Application) CheckMonitor(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	userID, ok := r.Context().Value(contextKeyUserID).(float64)
+	userID, ok := r.Context().Value(contextKeyUserID).(int)
 	if !ok {
 		slog.Warn("failed to get user id from context value")
 		http.Error(w, "invalid request", http.StatusUnauthorized)
@@ -59,7 +59,7 @@ func (app *Application) ShowMonitorStats(w http.ResponseWriter, r *http.Request)
 		http.Error(w, "invalid request", http.StatusBadRequest)
 		return
 	}
-	userID, ok := r.Context().Value(contextKeyUserID).(float64)
+	userID, ok := r.Context().Value(contextKeyUserID).(int)
 	if !ok {
 		slog.Warn("failed to get user id from client")
 		http.Error(w, "invalid request", http.StatusUnauthorized)

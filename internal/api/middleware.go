@@ -23,7 +23,13 @@ func (app *Application) RequireAuth(next http.Handler) http.Handler {
 			http.Error(w, "invalid or expired token", http.StatusUnauthorized)
 			return
 		}
-		ctx := context.WithValue(r.Context(), contextKeyUserID, payload["user_id"])
+		userID, ok := payload["user_id"].(float64)
+		if !ok {
+			slog.Warn("invalid payload token", "token", payload)
+			http.Error(w, "invalid or expired token", http.StatusUnauthorized)
+			return
+		}
+		ctx := context.WithValue(r.Context(), contextKeyUserID, int(userID))
 		r = r.WithContext(ctx)
 
 		next.ServeHTTP(w, r)
