@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -17,23 +18,6 @@ import (
 func TestApplication_CreateMonitor(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
-
-	payload := models.Monitor{
-		Url:           "google.com",
-		CheckInterval: 10,
-	}
-
-	jsonData, err := json.Marshal(payload)
-	if err != nil {
-		t.Fatalf("failed to marshal json data %v", err)
-	}
-
-	bodyReader := bytes.NewBuffer([]byte(jsonData))
-
-	r, err := http.NewRequestWithContext(ctx, http.MethodPost, "/monitor", bodyReader)
-	if err != nil {
-		t.Fatalf("failed to get new req w/ ctx %v", err)
-	}
 
 	user := models.User{
 		Username: "testCreateMonitor",
@@ -55,6 +39,23 @@ func TestApplication_CreateMonitor(t *testing.T) {
 	user, err = app.DB.GetUserByEmail(user.Email)
 	if err != nil {
 		t.Fatalf("failed to get user by email")
+	}
+
+	payload := models.Monitor{
+		Url:           "google.com",
+		CheckInterval: 10,
+	}
+
+	jsonData, err := json.Marshal(payload)
+	if err != nil {
+		t.Fatalf("failed to marshal json data %v", err)
+	}
+
+	bodyReader := bytes.NewBuffer([]byte(jsonData))
+
+	r, err := http.NewRequestWithContext(ctx, http.MethodPost, "/monitor", bodyReader)
+	if err != nil {
+		t.Fatalf("failed to get new req w/ ctx %v", err)
 	}
 
 	r.Header.Set("Content-Type", "application/json")
@@ -88,18 +89,13 @@ func TestApplication_ListMonitors(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
-	r, err := http.NewRequestWithContext(ctx, http.MethodGet, "/monitor", nil)
-	if err != nil {
-		t.Fatalf("failed to create new request %v", err)
-	}
-
 	user := models.User{
 		Username: "testListMonitors",
 		Password: "passwordListMonitors",
 		Email:    "testListMonitors@example.com",
 	}
 
-	err = app.DB.InsertUser(user)
+	err := app.DB.InsertUser(user)
 	if err != nil {
 		t.Fatalf("failed to insert user %v", err)
 	}
@@ -125,6 +121,11 @@ func TestApplication_ListMonitors(t *testing.T) {
 	err = app.DB.InsertMonitor(monitor2)
 	if err != nil {
 		t.Fatalf("failed to insert monitor %v", err)
+	}
+
+	r, err := http.NewRequestWithContext(ctx, http.MethodGet, "/monitor", nil)
+	if err != nil {
+		t.Fatalf("failed to create new request %v", err)
 	}
 
 	ctx = context.WithValue(r.Context(), contextKeyUserID, user.ID)
@@ -158,5 +159,258 @@ func TestApplication_ListMonitors(t *testing.T) {
 	}
 	if response.Data[0].Url != monitor1.Url {
 		t.Errorf("test failed, expected: %s, result: %s", monitor1.Url, response.Data[0].Url)
+	}
+}
+
+func TestApplication_ShowMonitor(t *testing.T) {
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	user := models.User{
+		Username: "testShowMonitor",
+		Password: "passwordShowMonitor",
+		Email:    "testShowMonitor@example.com",
+	}
+	err := app.DB.InsertUser(user)
+	if err != nil {
+		t.Fatalf("failed to insert user %v", err)
+	}
+	user, err = app.DB.GetUserByEmail(user.Email)
+	if err != nil {
+		t.Fatalf("failed to get user by email %v", err)
+	}
+
+	monitor1 := models.Monitor{
+		UserID:        user.ID,
+		Url:           "google.com",
+		CheckInterval: 5,
+	}
+	monitor2 := models.Monitor{
+		UserID:        user.ID,
+		Url:           "yahoo.com",
+		CheckInterval: 10,
+	}
+	err = app.DB.InsertMonitor(monitor1)
+	if err != nil {
+		t.Fatalf("failed to insert monitor %v", err)
+	}
+	err = app.DB.InsertMonitor(monitor2)
+	if err != nil {
+		t.Fatalf("failed to insert monitor %v", err)
+	}
+	monitors, err := app.DB.GetAllMonitorByUserID(user.ID)
+	if err != nil {
+		t.Fatalf("failed to get all monitor by user id")
+	}
+
+	targetID := monitors[0].ID
+	url := fmt.Sprintf("/monitor/%d", targetID)
+	r, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
+	if err != nil {
+		t.Fatalf("failed to create a new request")
+	}
+
+	ctx = context.WithValue(r.Context(), contextKeyUserID, user.ID)
+	r = r.WithContext(ctx)
+	r.SetPathValue("id", fmt.Sprintf("%d", targetID))
+	rr := httptest.NewRecorder()
+	handlers := http.HandlerFunc(app.ShowMonitor)
+	handlers.ServeHTTP(rr, r)
+	if rr.Code != http.StatusOK {
+		t.Errorf("test failed, expected: %d, result: %d", http.StatusOK, rr.Code)
+	}
+
+	var response struct {
+		Status  string         `json:"status"`
+		Message string         `json:"message"`
+		Data    models.Monitor `json:"data"`
+	}
+	err = json.NewDecoder(rr.Body).Decode(&response)
+	if err != nil {
+		t.Errorf("failed to decode response json %v", err)
+	}
+
+	if response.Status != "success" {
+		t.Errorf("test failed, expected: success, result: %s", response.Status)
+	}
+	if response.Message != "get monitor" {
+		t.Errorf("test failed, expected: get monitor, result: %s", response.Message)
+	}
+
+	if response.Data.ID != targetID {
+		t.Errorf("test failed, expected: %d, result: %d", targetID, response.Data.ID)
+	}
+
+	if response.Data.Url != monitor1.Url {
+		t.Errorf("test failed, expected: %s, result: %s", monitor1.Url, response.Data.Url)
+	}
+}
+
+func TestApplication_UpdateMonitor(t *testing.T) {
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	user := models.User{
+		Username: "testUpdateMonitor",
+		Password: "passwordUpdateMonitor",
+		Email:    "testUpdateMonitor@example.com",
+	}
+	err := app.DB.InsertUser(user)
+	if err != nil {
+		t.Fatalf("failed to insert user %v", err)
+	}
+	user, err = app.DB.GetUserByEmail(user.Email)
+	if err != nil {
+		t.Fatalf("failed to get user by email %v", err)
+	}
+
+	monitor1 := models.Monitor{
+		UserID:        user.ID,
+		Url:           "google.com",
+		CheckInterval: 5,
+	}
+	monitor2 := models.Monitor{
+		UserID:        user.ID,
+		Url:           "yahoo.com",
+		CheckInterval: 10,
+	}
+	err = app.DB.InsertMonitor(monitor1)
+	if err != nil {
+		t.Fatalf("failed to insert monitor %v", err)
+	}
+	err = app.DB.InsertMonitor(monitor2)
+	if err != nil {
+		t.Fatalf("failed to insert monitor %v", err)
+	}
+	monitors, err := app.DB.GetAllMonitorByUserID(user.ID)
+	if err != nil {
+		t.Fatalf("failed to get all monitor by user id")
+	}
+	targetID := monitors[0].ID
+
+	payload := models.Monitor{
+		Url:           "hoyolab.com",
+		CheckInterval: 5,
+	}
+
+	jsonData, err := json.Marshal(payload)
+	if err != nil {
+		t.Fatalf("failed to marshal payload json")
+	}
+
+	bodyReader := bytes.NewBuffer(jsonData)
+
+	url := fmt.Sprintf("/monitor/%d", targetID)
+	r, err := http.NewRequestWithContext(ctx, http.MethodPatch, url, bodyReader)
+	if err != nil {
+		t.Fatalf("failed to create a new request")
+	}
+
+	r.Header.Set("Content-Type", "application/json")
+	ctx = context.WithValue(r.Context(), contextKeyUserID, user.ID)
+	r = r.WithContext(ctx)
+	r.SetPathValue("id", fmt.Sprintf("%d", targetID))
+	rr := httptest.NewRecorder()
+	handlers := http.HandlerFunc(app.UpdateMonitor)
+	handlers.ServeHTTP(rr, r)
+	if rr.Code != http.StatusOK {
+		t.Errorf("test failed, expected: %d, result: %d", http.StatusOK, rr.Code)
+	}
+
+	var response struct {
+		Status  string         `json:"status"`
+		Message string         `json:"message"`
+		Data    models.Monitor `json:"data"`
+	}
+	err = json.NewDecoder(rr.Body).Decode(&response)
+	if err != nil {
+		t.Errorf("failed to decode response json %v", err)
+	}
+
+	if response.Status != "success" {
+		t.Errorf("test failed, expected: success, result: %s", response.Status)
+	}
+	if response.Message != "monitor updated" {
+		t.Errorf("test failed, expected: monitor updated, result: %s", response.Message)
+	}
+
+	if response.Data.ID != targetID {
+		t.Errorf("test failed, expected: %d, result: %d", targetID, response.Data.ID)
+	}
+
+	if response.Data.Url != payload.Url {
+		t.Errorf("test failed, expected: %s, result: %s", payload.Url, response.Data.Url)
+	}
+}
+
+func TestApplication_DeleteMonitor(t *testing.T) {
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	user := models.User{
+		Username: "testDeleteMonitor",
+		Password: "passwordDeleteMonitor",
+		Email:    "testDeleteMonitor@example.com",
+	}
+	err := app.DB.InsertUser(user)
+	if err != nil {
+		t.Fatalf("failed to insert user %v", err)
+	}
+	user, err = app.DB.GetUserByEmail(user.Email)
+	if err != nil {
+		t.Fatalf("failed to get user by email %v", err)
+	}
+
+	monitor1 := models.Monitor{
+		UserID:        user.ID,
+		Url:           "google.com",
+		CheckInterval: 5,
+	}
+	monitor2 := models.Monitor{
+		UserID:        user.ID,
+		Url:           "yahoo.com",
+		CheckInterval: 10,
+	}
+	err = app.DB.InsertMonitor(monitor1)
+	if err != nil {
+		t.Fatalf("failed to insert monitor %v", err)
+	}
+	err = app.DB.InsertMonitor(monitor2)
+	if err != nil {
+		t.Fatalf("failed to insert monitor %v", err)
+	}
+	monitors, err := app.DB.GetAllMonitorByUserID(user.ID)
+	if err != nil {
+		t.Fatalf("failed to get all monitor by user id")
+	}
+	targetID := monitors[0].ID
+
+	url := fmt.Sprintf("/monitor/%d", targetID)
+	r, err := http.NewRequestWithContext(ctx, http.MethodDelete, url, nil)
+	if err != nil {
+		t.Fatalf("failed to create a new request %v", err)
+	}
+
+	ctx = context.WithValue(r.Context(), contextKeyUserID, user.ID)
+	r = r.WithContext(ctx)
+	r.SetPathValue("id", fmt.Sprintf("%d", targetID))
+	rr := httptest.NewRecorder()
+	handlers := http.HandlerFunc(app.DeleteMonitor)
+	handlers.ServeHTTP(rr, r)
+	if rr.Code != http.StatusOK {
+		t.Errorf("test failed, expected: %d, result: %d", http.StatusOK, rr.Code)
+	}
+
+	var response jsonResponse
+	err = json.NewDecoder(rr.Body).Decode(&response)
+	if err != nil {
+		t.Errorf("failed to decode response json %v", err)
+	}
+
+	if response.Status != "success" {
+		t.Errorf("test failed, expected: success, result: %s", response.Status)
+	}
+	if response.Message != "monitor has been deleted" {
+		t.Errorf("test failed, expected: monitor updated, result: %s", response.Message)
 	}
 }
