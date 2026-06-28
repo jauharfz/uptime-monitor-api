@@ -153,50 +153,81 @@ curl localhost:8080/monitor/1/stats -H "Authorization: Bearer <jwt>"
 #     "data":{"total_checks":12,"avg_response_time":143,"uptime_percentage":100}}
 ```
 
+## Tests
+
+The handlers and storage layer are tested against a real PostgreSQL database
+rather than mocks, so the SQL runs too. `TestMain` (in
+`internal/api/setup_test.go`) connects to a separate `uptime_monitor_test`
+database, drops and recreates the schema from `migrations/001_init.sql` before the
+run, and starts the background worker so the whole process is exercised. Each
+handler test drives an endpoint with `net/http/httptest` and checks the status
+code and JSON body.
+
+```bash
+# expects a throwaway Postgres reachable at DATABASE_URL
+go test ./...
+```
+
 ## Running locally
 
 Requirements: Docker (and Go 1.22+ if you want to run the server outside a
 container).
 
-Configuration comes from environment variables (loaded from a `.env` file if
-present):
+Configuration comes from environment variables, loaded from a `.env` file (copy
+`.env.example` to start). Docker Compose reads the Postgres credentials and builds
+the API's `DATABASE_URL` from them, so `DATABASE_URL` itself is only needed when
+you run the binary directly.
 
-| variable     | example                                                            |
-|--------------|--------------------------------------------------------------------|
-| DATABASE_URL | postgres://postgres:postgres@localhost:5432/uptime_monitor?sslmode=disable |
-| JWT_SECRET   | a long random string                                               |
-| PORT         | 8080                                                               |
+| variable          | used by          | example                                  |
+|-------------------|------------------|------------------------------------------|
+| POSTGRES_USER     | compose          | postgres                                 |
+| POSTGRES_PASSWORD | compose          | a strong random string                   |
+| POSTGRES_DB       | compose          | uptime_monitor                           |
+| JWT_SECRET        | api              | a long random string                     |
+| PORT              | api              | 8080                                     |
+| DATABASE_URL      | api (direct run) | postgres://postgres:…@localhost:5454/uptime_monitor?sslmode=disable |
 
 **With Docker Compose**
 
 ```bash
+cp .env.example .env   # then fill in real values
 docker compose up --build
 ```
 
-This starts PostgreSQL and the API. The schema in `migrations/001_init.sql` is
-applied once against the database (see the migrations note below), after which
-the API is available on `http://localhost:8080`.
+This starts PostgreSQL and the API. `migrations/001_init.sql` is mounted into the
+Postgres init directory, so the schema is created automatically the first time the
+database volume is initialised. The API is then available on
+`http://localhost:8080` (Postgres is published on `localhost:5454`).
 
-**Applying the schema**
+**Applying the schema manually** — only needed if you run Postgres yourself,
+outside Compose:
 
 ```bash
-# against a running database
 psql "$DATABASE_URL" -f migrations/001_init.sql
 ```
+
+## Deployment
+
+A live instance runs on an Azure Ubuntu VM. Docker Compose builds the API and
+PostgreSQL on the host, Caddy sits in front as a reverse proxy and terminates TLS
+with an automatically renewed Let's Encrypt certificate, and the hostname is a
+DuckDNS subdomain. The containers' published ports are bound to `localhost`, so
+only Caddy reaches them from outside.
+
+Live: `https://uptime-monitor-api.duckdns.org/health`
 
 ## Limitations and next steps
 
 This is a learning project, and there are things I left out on purpose or would
 do next:
 
-- **No automated tests yet.** The handlers and the storage layer are the obvious
-  places to start (`net/http/httptest` + a test database).
-- **Input validation is minimal** — e.g. URL format and `check_interval` bounds
-  aren't checked yet.
+- **Validation is light.** A monitor URL with no scheme gets `https://`
+  prepended, but it isn't otherwise validated, and `check_interval` has no lower
+  bound yet.
 - **JWT is hand-rolled** for learning; a production version would use a maintained
   library and rotate the signing secret.
-- **Migrations are applied manually.** A migration tool, or auto-running the SQL
-  on database init, would make setup one step.
+- **No migration tooling.** The schema auto-loads on first database init, but
+  there's no versioned-migration setup for evolving it later.
 - **Checks history is capped at the latest 50** with no pagination.
-- **No TLS / alerting** — in a real deployment this would sit behind a reverse
-  proxy, and a "monitor went down" notification would be the next feature.
+- **No alerting.** TLS and the reverse proxy are handled at deploy time (above);
+  a "monitor went down" notification would be the next feature.
