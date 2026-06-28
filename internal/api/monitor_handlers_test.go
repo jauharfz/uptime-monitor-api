@@ -53,10 +53,7 @@ func TestApplication_CreateMonitor(t *testing.T) {
 
 	bodyReader := bytes.NewBuffer([]byte(jsonData))
 
-	r, err := http.NewRequestWithContext(ctx, http.MethodPost, "/monitor", bodyReader)
-	if err != nil {
-		t.Fatalf("failed to get new req w/ ctx %v", err)
-	}
+	r := httptest.NewRequestWithContext(ctx, http.MethodPost, "/monitor", bodyReader)
 
 	r.Header.Set("Content-Type", "application/json")
 	ctx = context.WithValue(r.Context(), contextKeyUserID, user.ID)
@@ -71,7 +68,7 @@ func TestApplication_CreateMonitor(t *testing.T) {
 	var response jsonResponse
 	err = json.NewDecoder(rr.Body).Decode(&response)
 	if err != nil {
-		t.Errorf("failed to decode response json %v", err)
+		t.Fatalf("failed to decode response json %v", err)
 	}
 
 	if response.Status != "success" {
@@ -123,10 +120,7 @@ func TestApplication_ListMonitors(t *testing.T) {
 		t.Fatalf("failed to insert monitor %v", err)
 	}
 
-	r, err := http.NewRequestWithContext(ctx, http.MethodGet, "/monitor", nil)
-	if err != nil {
-		t.Fatalf("failed to create new request %v", err)
-	}
+	r := httptest.NewRequestWithContext(ctx, http.MethodGet, "/monitor", nil)
 
 	ctx = context.WithValue(r.Context(), contextKeyUserID, user.ID)
 	r = r.WithContext(ctx)
@@ -144,7 +138,7 @@ func TestApplication_ListMonitors(t *testing.T) {
 	}
 	err = json.NewDecoder(rr.Body).Decode(&response)
 	if err != nil {
-		t.Errorf("failed to decode response json %v", err)
+		t.Fatalf("failed to decode response json %v", err)
 	}
 
 	if response.Status != "success" {
@@ -205,10 +199,7 @@ func TestApplication_ShowMonitor(t *testing.T) {
 
 	targetID := monitors[0].ID
 	url := fmt.Sprintf("/monitor/%d", targetID)
-	r, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
-	if err != nil {
-		t.Fatalf("failed to create a new request")
-	}
+	r := httptest.NewRequestWithContext(ctx, http.MethodGet, url, nil)
 
 	ctx = context.WithValue(r.Context(), contextKeyUserID, user.ID)
 	r = r.WithContext(ctx)
@@ -227,7 +218,7 @@ func TestApplication_ShowMonitor(t *testing.T) {
 	}
 	err = json.NewDecoder(rr.Body).Decode(&response)
 	if err != nil {
-		t.Errorf("failed to decode response json %v", err)
+		t.Fatalf("failed to decode response json %v", err)
 	}
 
 	if response.Status != "success" {
@@ -301,10 +292,7 @@ func TestApplication_UpdateMonitor(t *testing.T) {
 	bodyReader := bytes.NewBuffer(jsonData)
 
 	url := fmt.Sprintf("/monitor/%d", targetID)
-	r, err := http.NewRequestWithContext(ctx, http.MethodPatch, url, bodyReader)
-	if err != nil {
-		t.Fatalf("failed to create a new request")
-	}
+	r := httptest.NewRequestWithContext(ctx, http.MethodPatch, url, bodyReader)
 
 	r.Header.Set("Content-Type", "application/json")
 	ctx = context.WithValue(r.Context(), contextKeyUserID, user.ID)
@@ -324,7 +312,7 @@ func TestApplication_UpdateMonitor(t *testing.T) {
 	}
 	err = json.NewDecoder(rr.Body).Decode(&response)
 	if err != nil {
-		t.Errorf("failed to decode response json %v", err)
+		t.Fatalf("failed to decode response json %v", err)
 	}
 
 	if response.Status != "success" {
@@ -386,10 +374,7 @@ func TestApplication_DeleteMonitor(t *testing.T) {
 	targetID := monitors[0].ID
 
 	url := fmt.Sprintf("/monitor/%d", targetID)
-	r, err := http.NewRequestWithContext(ctx, http.MethodDelete, url, nil)
-	if err != nil {
-		t.Fatalf("failed to create a new request %v", err)
-	}
+	r := httptest.NewRequestWithContext(ctx, http.MethodDelete, url, nil)
 
 	ctx = context.WithValue(r.Context(), contextKeyUserID, user.ID)
 	r = r.WithContext(ctx)
@@ -404,7 +389,7 @@ func TestApplication_DeleteMonitor(t *testing.T) {
 	var response jsonResponse
 	err = json.NewDecoder(rr.Body).Decode(&response)
 	if err != nil {
-		t.Errorf("failed to decode response json %v", err)
+		t.Fatalf("failed to decode response json %v", err)
 	}
 
 	if response.Status != "success" {

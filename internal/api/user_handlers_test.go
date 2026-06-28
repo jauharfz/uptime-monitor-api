@@ -30,12 +30,8 @@ func TestApplication_PostUserRegister(t *testing.T) {
 
 	bodyReader := bytes.NewReader(jsonData)
 
-	r, err := http.NewRequestWithContext(ctx, http.MethodPost, "/users/register", bodyReader)
-	if err != nil {
-		t.Fatalf("failed to get request %v", err)
-	}
+	r := httptest.NewRequestWithContext(ctx, http.MethodPost, "/users/register", bodyReader)
 
-	// r = r.WithContext(getCtx(r))
 	r.Header.Set("Content-Type", "application/json")
 	rr := httptest.NewRecorder()
 	handlers := http.HandlerFunc(app.PostUserRegister)
@@ -47,7 +43,7 @@ func TestApplication_PostUserRegister(t *testing.T) {
 	var response jsonResponse
 	err = json.NewDecoder(rr.Body).Decode(&response)
 	if err != nil {
-		t.Errorf("failed to decode response json %v", err)
+		t.Fatalf("failed to decode response json %v", err)
 	}
 
 	if response.Status != "success" {
@@ -80,10 +76,7 @@ func TestApplication_PostUserLogin(t *testing.T) {
 
 	bodyReader := bytes.NewBuffer(jsonData)
 
-	r, err := http.NewRequestWithContext(ctx, http.MethodPost, "/users/login", bodyReader)
-	if err != nil {
-		t.Fatalf("failed to get request %v", err)
-	}
+	r := httptest.NewRequestWithContext(ctx, http.MethodPost, "/users/login", bodyReader)
 
 	payload.Password = string(hashedPwd)
 	err = app.DB.InsertUser(payload)
@@ -102,7 +95,7 @@ func TestApplication_PostUserLogin(t *testing.T) {
 	var response jsonResponse
 	err = json.NewDecoder(rr.Body).Decode(&response)
 	if err != nil {
-		t.Errorf("failed to decode response json %v", err)
+		t.Fatalf("failed to decode response json %v", err)
 	}
 
 	if response.Status != "success" {

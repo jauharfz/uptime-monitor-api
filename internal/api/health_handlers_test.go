@@ -12,12 +12,8 @@ import (
 func TestApplication_HealthTest(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
-	r, err := http.NewRequestWithContext(ctx, http.MethodGet, "/health", nil)
-	if err != nil {
-		t.Fatalf("failed to create request: %v", err)
-	}
-	// r = r.WithContext(getCtx(r))
-	// r.Header.Set("Content-Type", "application/json")
+	r := httptest.NewRequestWithContext(ctx, http.MethodGet, "/health", nil)
+
 	rr := httptest.NewRecorder()
 	handler := http.HandlerFunc(app.HealthTest)
 	handler.ServeHTTP(rr, r)
@@ -27,7 +23,7 @@ func TestApplication_HealthTest(t *testing.T) {
 	}
 
 	var response jsonResponse
-	err = json.NewDecoder(rr.Body).Decode(&response)
+	err := json.NewDecoder(rr.Body).Decode(&response)
 	if err != nil {
 		t.Fatalf("failed to decode request json: %v", err)
 	}

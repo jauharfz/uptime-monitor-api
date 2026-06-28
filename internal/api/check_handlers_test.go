@@ -78,10 +78,7 @@ func TestApplication_CheckMonitor(t *testing.T) {
 	}
 
 	url := fmt.Sprintf("/monitor/%d/checks", targetID)
-	r, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
-	if err != nil {
-		t.Fatalf("failed to create a new request")
-	}
+	r := httptest.NewRequestWithContext(ctx, http.MethodGet, url, nil)
 
 	r.SetPathValue("id", fmt.Sprintf("%d", targetID))
 	ctx = context.WithValue(r.Context(), contextKeyUserID, user.ID)
@@ -189,10 +186,7 @@ func TestApplication_ShowMonitorStats(t *testing.T) {
 	}
 
 	url := fmt.Sprintf("/monitor/%d/stats", targetID)
-	r, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
-	if err != nil {
-		t.Fatalf("failed to create a new request")
-	}
+	r := httptest.NewRequestWithContext(ctx, http.MethodGet, url, nil)
 
 	r.SetPathValue("id", fmt.Sprintf("%d", targetID))
 	ctx = context.WithValue(r.Context(), contextKeyUserID, user.ID)
