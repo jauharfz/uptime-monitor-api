@@ -2,9 +2,11 @@ package api
 
 import (
 	"encoding/json"
+	"fmt"
 	"log/slog"
 	"net/http"
 	"strconv"
+	"strings"
 	"uptime-monitor/internal/models"
 )
 
@@ -19,6 +21,10 @@ func (app *Application) CreateMonitor(w http.ResponseWriter, r *http.Request) {
 		slog.Warn("failed to decode user request", "error", err)
 		http.Error(w, "invalid request", http.StatusBadRequest)
 		return
+	}
+
+	if !strings.HasPrefix(monitor.Url, "http://") && !strings.HasPrefix(monitor.Url, "https://") {
+		monitor.Url = fmt.Sprintf("https://%s", monitor.Url)
 	}
 
 	userID, ok := r.Context().Value(contextKeyUserID).(int)

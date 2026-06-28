@@ -6,32 +6,6 @@ import (
 	"uptime-monitor/internal/models"
 )
 
-func (s *PostgresStore) GetAllMonitors() ([]models.Monitor, error) {
-	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
-	defer cancel()
-
-	query := `SELECT * FROM monitors`
-	var monitors []models.Monitor
-
-	rows, err := s.DB.QueryContext(ctx, query)
-	if err != nil {
-		return monitors, err
-	}
-	defer rows.Close()
-	for rows.Next() {
-		var monitor models.Monitor
-		err = rows.Scan(&monitor.ID, &monitor.UserID, &monitor.Url, &monitor.CheckInterval, &monitor.CreatedAt, &monitor.UpdatedAt, &monitor.LastCheckedAt)
-		if err != nil {
-			return monitors, err
-		}
-		monitors = append(monitors, monitor)
-	}
-	if rows.Err() != nil {
-		return monitors, rows.Err()
-	}
-	return monitors, nil
-}
-
 func (s *PostgresStore) InsertCheck(monitorID, status, duration int) error {
 	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
 	defer cancel()
