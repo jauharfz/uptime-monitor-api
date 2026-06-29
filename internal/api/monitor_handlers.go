@@ -27,6 +27,10 @@ func (app *Application) CreateMonitor(w http.ResponseWriter, r *http.Request) {
 		monitor.Url = fmt.Sprintf("https://%s", monitor.Url)
 	}
 
+	if monitor.CheckInterval < 10 {
+		monitor.CheckInterval = 10
+	}
+
 	userID, ok := r.Context().Value(contextKeyUserID).(int)
 	if !ok {
 		slog.Warn("failed to get user id from context")
@@ -150,6 +154,14 @@ func (app *Application) UpdateMonitor(w http.ResponseWriter, r *http.Request) {
 
 	monitor.ID = monitorID
 	monitor.UserID = int(userID)
+
+	if !strings.HasPrefix(monitor.Url, "http://") && !strings.HasPrefix(monitor.Url, "https://") {
+		monitor.Url = fmt.Sprintf("https://%s", monitor.Url)
+	}
+
+	if monitor.CheckInterval < 10 {
+		monitor.CheckInterval = 10
+	}
 
 	_, err = app.DB.GetMonitorByID(monitorID, int(userID))
 	if err != nil {
