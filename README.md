@@ -1,4 +1,5 @@
 # Uptime Monitor
+![CI](https://github.com/jauharfz/uptime-monitor-api/actions/workflows/ci.yml/badge.svg)
 
 A small HTTP service in Go where a user registers URLs and has them checked on a
 schedule by a background worker. Each check records the HTTP status code and
@@ -23,7 +24,7 @@ PostgreSQL driver and password hashing).
 
 Two things run inside one process:
 
-1. **HTTP API** — registration, login, and CRUD for monitors, plus history and
+1. **REST API** — registration, login, and CRUD for monitors, plus history and
    stats endpoints. Every route that touches user data sits behind JWT auth
    middleware.
 2. **Background worker** — a goroutine driven by a `time.Ticker`. On each tick it
