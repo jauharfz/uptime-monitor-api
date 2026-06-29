@@ -42,7 +42,7 @@ func TestApplication_CreateMonitor(t *testing.T) {
 	}
 
 	payload := models.Monitor{
-		Url:           "google.com",
+		Url:           "https://google.com",
 		CheckInterval: 10,
 	}
 
@@ -102,12 +102,12 @@ func TestApplication_ListMonitors(t *testing.T) {
 	}
 	monitor1 := models.Monitor{
 		UserID:        user.ID,
-		Url:           "google.com",
+		Url:           "https://google.com",
 		CheckInterval: 5,
 	}
 	monitor2 := models.Monitor{
 		UserID:        user.ID,
-		Url:           "yahoo.com",
+		Url:           "https://yahoo.com",
 		CheckInterval: 10,
 	}
 
@@ -176,12 +176,12 @@ func TestApplication_ShowMonitor(t *testing.T) {
 
 	monitor1 := models.Monitor{
 		UserID:        user.ID,
-		Url:           "google.com",
+		Url:           "https://google.com",
 		CheckInterval: 5,
 	}
 	monitor2 := models.Monitor{
 		UserID:        user.ID,
-		Url:           "yahoo.com",
+		Url:           "https://yahoo.com",
 		CheckInterval: 10,
 	}
 	err = app.DB.InsertMonitor(monitor1)
@@ -257,12 +257,12 @@ func TestApplication_UpdateMonitor(t *testing.T) {
 
 	monitor1 := models.Monitor{
 		UserID:        user.ID,
-		Url:           "google.com",
+		Url:           "https://google.com",
 		CheckInterval: 5,
 	}
 	monitor2 := models.Monitor{
 		UserID:        user.ID,
-		Url:           "yahoo.com",
+		Url:           "https://yahoo.com",
 		CheckInterval: 10,
 	}
 	err = app.DB.InsertMonitor(monitor1)
@@ -280,7 +280,7 @@ func TestApplication_UpdateMonitor(t *testing.T) {
 	targetID := monitors[0].ID
 
 	payload := models.Monitor{
-		Url:           "hoyolab.com",
+		Url:           "https://hoyolab.com",
 		CheckInterval: 5,
 	}
 
@@ -351,12 +351,12 @@ func TestApplication_DeleteMonitor(t *testing.T) {
 
 	monitor1 := models.Monitor{
 		UserID:        user.ID,
-		Url:           "google.com",
+		Url:           "https://google.com",
 		CheckInterval: 5,
 	}
 	monitor2 := models.Monitor{
 		UserID:        user.ID,
-		Url:           "yahoo.com",
+		Url:           "https://yahoo.com",
 		CheckInterval: 10,
 	}
 	err = app.DB.InsertMonitor(monitor1)

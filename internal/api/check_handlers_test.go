@@ -31,12 +31,12 @@ func TestApplication_CheckMonitor(t *testing.T) {
 
 	monitor1 := models.Monitor{
 		UserID:        user.ID,
-		Url:           "google.com",
+		Url:           "https://google.com",
 		CheckInterval: 5,
 	}
 	monitor2 := models.Monitor{
 		UserID:        user.ID,
-		Url:           "yahoo.com",
+		Url:           "https://yahoo.com",
 		CheckInterval: 10,
 	}
 	err = app.DB.InsertMonitor(monitor1)
@@ -139,12 +139,12 @@ func TestApplication_ShowMonitorStats(t *testing.T) {
 
 	monitor1 := models.Monitor{
 		UserID:        user.ID,
-		Url:           "google.com",
+		Url:           "https://google.com",
 		CheckInterval: 5,
 	}
 	monitor2 := models.Monitor{
 		UserID:        user.ID,
-		Url:           "yahoo.com",
+		Url:           "https://yahoo.com",
 		CheckInterval: 10,
 	}
 	err = app.DB.InsertMonitor(monitor1)

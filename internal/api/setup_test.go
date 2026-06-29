@@ -18,11 +18,13 @@ var app *Application
 
 // TODO: MockDB w/ postgres & docker
 func TestMain(m *testing.M) {
-	dbUrl := os.Getenv("DATABASE_URL")
-	if dbUrl == "" {
-		slog.Error("failed to get database url from environment", "dbUrl", dbUrl)
-		os.Exit(1)
+	if os.Getenv("DATABASE_URL") == "" {
+		os.Setenv("DATABASE_URL", "postgres://postgres:1234567k@localhost:5454/uptime_monitor_test?sslmode=disable")
 	}
+	if os.Getenv("JWT_SECRET") == "" {
+		os.Setenv("JWT_SECRET", "test-secret-not-for-prod")
+	}
+	dbUrl := os.Getenv("DATABASE_URL")
 
 	conn, err := sql.Open("pgx", dbUrl)
 	if err != nil {
