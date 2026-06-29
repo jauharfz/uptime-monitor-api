@@ -21,7 +21,8 @@ var app *Application
 func TestMain(m *testing.M) {
 	dbUrl := os.Getenv("DATABASE_URL")
 	if dbUrl == "" {
-		dbUrl = "postgres://postgres:1234567k@localhost:5454/uptime_monitor_test?sslmode=disable"
+		slog.Error("failed to get database url from environment", "dbUrl", dbUrl)
+		os.Exit(1)
 	}
 
 	conn, err := sql.Open("pgx", dbUrl)
@@ -68,8 +69,4 @@ func TestMain(m *testing.M) {
 	wg.Wait()
 
 	os.Exit(code)
-}
-
-func getCtx(r *http.Request) context.Context {
-	return context.WithValue(r.Context(), contextKeyUserID, r.Header.Get("X-Session"))
 }

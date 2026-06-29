@@ -37,7 +37,8 @@ func main() {
 
 	dbUrl := os.Getenv("DATABASE_URL")
 	if dbUrl == "" {
-		dbUrl = "postgres://postgres:1234567k@localhost:5454/uptime_monitor?sslmode=disable"
+		slog.Error("failed to get database url from environment", "error", err)
+		os.Exit(1)
 	}
 	jwtSecret := os.Getenv("JWT_SECRET")
 	if jwtSecret == "" {
