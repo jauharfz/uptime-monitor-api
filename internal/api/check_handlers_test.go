@@ -77,7 +77,7 @@ func TestApplication_CheckMonitor(t *testing.T) {
 		t.Fatalf("failed to get checks by monitor id %v", err)
 	}
 
-	url := fmt.Sprintf("/monitor/%d/checks", targetID)
+	url := fmt.Sprintf("/api/v1/monitors/%d/checks", targetID)
 	r := httptest.NewRequestWithContext(ctx, http.MethodGet, url, nil)
 
 	r.SetPathValue("id", fmt.Sprintf("%d", targetID))
@@ -185,7 +185,7 @@ func TestApplication_ShowMonitorStats(t *testing.T) {
 		t.Fatalf("failed to get monitor stats by id %v", err)
 	}
 
-	url := fmt.Sprintf("/monitor/%d/stats", targetID)
+	url := fmt.Sprintf("/api/v1/monitors/%d/stats", targetID)
 	r := httptest.NewRequestWithContext(ctx, http.MethodGet, url, nil)
 
 	r.SetPathValue("id", fmt.Sprintf("%d", targetID))

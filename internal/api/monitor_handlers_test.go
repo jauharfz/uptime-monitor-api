@@ -53,7 +53,7 @@ func TestApplication_CreateMonitor(t *testing.T) {
 
 	bodyReader := bytes.NewBuffer([]byte(jsonData))
 
-	r := httptest.NewRequestWithContext(ctx, http.MethodPost, "/monitor", bodyReader)
+	r := httptest.NewRequestWithContext(ctx, http.MethodPost, "/api/v1/monitors", bodyReader)
 
 	r.Header.Set("Content-Type", "application/json")
 	ctx = context.WithValue(r.Context(), contextKeyUserID, user.ID)
@@ -120,7 +120,7 @@ func TestApplication_ListMonitors(t *testing.T) {
 		t.Fatalf("failed to insert monitor %v", err)
 	}
 
-	r := httptest.NewRequestWithContext(ctx, http.MethodGet, "/monitor", nil)
+	r := httptest.NewRequestWithContext(ctx, http.MethodGet, "/api/v1/monitors", nil)
 
 	ctx = context.WithValue(r.Context(), contextKeyUserID, user.ID)
 	r = r.WithContext(ctx)
@@ -198,7 +198,7 @@ func TestApplication_ShowMonitor(t *testing.T) {
 	}
 
 	targetID := monitors[0].ID
-	url := fmt.Sprintf("/monitor/%d", targetID)
+	url := fmt.Sprintf("/api/v1/monitors/%d", targetID)
 	r := httptest.NewRequestWithContext(ctx, http.MethodGet, url, nil)
 
 	ctx = context.WithValue(r.Context(), contextKeyUserID, user.ID)
@@ -291,7 +291,7 @@ func TestApplication_UpdateMonitor(t *testing.T) {
 
 	bodyReader := bytes.NewBuffer(jsonData)
 
-	url := fmt.Sprintf("/monitor/%d", targetID)
+	url := fmt.Sprintf("/api/v1/monitors/%d", targetID)
 	r := httptest.NewRequestWithContext(ctx, http.MethodPatch, url, bodyReader)
 
 	r.Header.Set("Content-Type", "application/json")
@@ -373,7 +373,7 @@ func TestApplication_DeleteMonitor(t *testing.T) {
 	}
 	targetID := monitors[0].ID
 
-	url := fmt.Sprintf("/monitor/%d", targetID)
+	url := fmt.Sprintf("/api/v1/monitors/%d", targetID)
 	r := httptest.NewRequestWithContext(ctx, http.MethodDelete, url, nil)
 
 	ctx = context.WithValue(r.Context(), contextKeyUserID, user.ID)

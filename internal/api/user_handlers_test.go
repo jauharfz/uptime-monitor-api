@@ -30,7 +30,7 @@ func TestApplication_PostUserRegister(t *testing.T) {
 
 	bodyReader := bytes.NewReader(jsonData)
 
-	r := httptest.NewRequestWithContext(ctx, http.MethodPost, "/users/register", bodyReader)
+	r := httptest.NewRequestWithContext(ctx, http.MethodPost, "/api/v1/users/register", bodyReader)
 
 	r.Header.Set("Content-Type", "application/json")
 	rr := httptest.NewRecorder()
@@ -76,7 +76,7 @@ func TestApplication_PostUserLogin(t *testing.T) {
 
 	bodyReader := bytes.NewBuffer(jsonData)
 
-	r := httptest.NewRequestWithContext(ctx, http.MethodPost, "/users/login", bodyReader)
+	r := httptest.NewRequestWithContext(ctx, http.MethodPost, "/api/v1/users/login", bodyReader)
 
 	payload.Password = string(hashedPwd)
 	err = app.DB.InsertUser(payload)
