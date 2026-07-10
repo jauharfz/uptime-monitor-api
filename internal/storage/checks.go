@@ -6,17 +6,20 @@ import (
 	"uptime-monitor/internal/models"
 )
 
-func (s *PostgresStore) InsertCheck(monitorID, status, duration int) error {
+func (s *PostgresStore) InsertCheck(monitorID, status, duration int) (models.Check, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
 	defer cancel()
 
-	stmt := `INSERT INTO checks(monitor_id,status_code,response_time, created_at,updated_at) VALUES ($1,$2,$3,$4,$5)`
+	stmt := `INSERT INTO checks(monitor_id,status_code,response_time, created_at,updated_at) 
+	VALUES ($1,$2,$3,$4,$5) RETURNING *`
 
-	_, err := s.DB.ExecContext(ctx, stmt, monitorID, status, duration, time.Now(), time.Now())
+	var check models.Check
+	row := s.DB.QueryRowContext(ctx, stmt, monitorID, status, duration, time.Now(), time.Now())
+	err := row.Scan(&check.ID, &check.MonitorID, &check.StatusCode, &check.ResponseTime, &check.CreatedAt, &check.UpdatedAt)
 	if err != nil {
-		return err
+		return check, err
 	}
-	return nil
+	return check, nil
 }
 
 func (s *PostgresStore) GetChecksByMonitorID(id int) ([]models.Check, error) {
@@ -61,7 +64,7 @@ func (s *PostgresStore) GetMonitorsDueForCheck() ([]models.Monitor, error) {
 
 	for rows.Next() {
 		var monitor models.Monitor
-		err = rows.Scan(&monitor.ID, &monitor.UserID, &monitor.Url, &monitor.CheckInterval, &monitor.CreatedAt, &monitor.UpdatedAt, &monitor.LastCheckedAt)
+		err = rows.Scan(&monitor.ID, &monitor.UserID, &monitor.Url, &monitor.CheckInterval, &monitor.CreatedAt, &monitor.UpdatedAt, &monitor.LastCheckedAt, &monitor.WebhookUrl, &monitor.LastStatusCode)
 		if err != nil {
 			return nil, err
 		}
@@ -73,13 +76,13 @@ func (s *PostgresStore) GetMonitorsDueForCheck() ([]models.Monitor, error) {
 	return monitors, nil
 }
 
-func (s *PostgresStore) UpdateLastCheckedMonitor(id int) error {
+func (s *PostgresStore) UpdateLastCheckedAndStatusCode(statusCode, id int) error {
 	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
 	defer cancel()
 
-	stmt := `UPDATE monitors SET last_checked_at = NOW() WHERE id = $1`
+	stmt := `UPDATE monitors SET last_checked_at = NOW(), last_status_code = $1 WHERE id = $2`
 
-	_, err := s.DB.ExecContext(ctx, stmt, id)
+	_, err := s.DB.ExecContext(ctx, stmt, statusCode, id)
 	if err != nil {
 		return err
 	}
@@ -104,4 +107,32 @@ func (s *PostgresStore) GetMonitorStatsById(monitorID int) (models.MonitorStats,
 		return stats, err
 	}
 	return stats, nil
+}
+
+func (s *PostgresStore) GetCheckAndMonitorById(id int) (models.CheckWithMonitor, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+	defer cancel()
+
+	query := `SELECT m.id,m.url,m.check_interval,c.id,c.status_code,c.response_time,m.last_checked_at FROM monitors m 
+	JOIN checks c ON m.id = c.monitor_id
+	WHERE c.id = $1`
+
+	row := s.DB.QueryRowContext(ctx, query, id)
+
+	var checkWithMonitor models.CheckWithMonitor
+
+	err := row.Scan(
+		&checkWithMonitor.MonitorID,
+		&checkWithMonitor.Url,
+		&checkWithMonitor.CheckInterval,
+		&checkWithMonitor.CheckID,
+		&checkWithMonitor.StatusCode,
+		&checkWithMonitor.ResponseTime,
+		&checkWithMonitor.CheckedAt,
+	)
+
+	if err != nil {
+		return checkWithMonitor, err
+	}
+	return checkWithMonitor, nil
 }

@@ -1,0 +1,1 @@
+ALTER TABLE monitors ADD COLUMN last_status_code INTEGER NOT NULL DEFAULT 200;

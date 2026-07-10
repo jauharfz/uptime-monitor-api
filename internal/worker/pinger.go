@@ -1,7 +1,9 @@
 package worker
 
 import (
+	"bytes"
 	"context"
+	"encoding/json"
 	"log/slog"
 	"net/http"
 	"sync"
@@ -52,12 +54,20 @@ func (w *Worker) StartWorker(ctx context.Context, wg *sync.WaitGroup) {
 						status = 0
 					}
 					slog.Info("Url Pinged")
-					err = w.DB.InsertCheck(m.ID, status, int(duration.Milliseconds()))
+					check, err := w.DB.InsertCheck(m.ID, status, int(duration.Milliseconds()))
 					if err != nil {
 						slog.Error("failed to insert checks to monitor from database", "url", m.Url, "error", err)
 						return
 					}
-					err = w.DB.UpdateLastCheckedMonitor(m.ID)
+
+					if status != m.LastStatusCode && m.WebhookUrl != "" {
+						batchWg.Add(1)
+						go func(m models.Monitor, c models.Check) {
+							w.SendWebhook(&m, &c, &batchWg)
+						}(monitor, check)
+					}
+
+					err = w.DB.UpdateLastCheckedAndStatusCode(status, m.ID)
 					if err != nil {
 						slog.Error("failed to update lash checked monitor by monitor id from database", "url", m.Url, "error", err)
 						return
@@ -67,5 +77,37 @@ func (w *Worker) StartWorker(ctx context.Context, wg *sync.WaitGroup) {
 			}
 			batchWg.Wait()
 		}
+	}
+}
+
+func (w *Worker) SendWebhook(monitor *models.Monitor, check *models.Check, wg *sync.WaitGroup) {
+	defer wg.Done()
+	var responseStatus int
+	payload := models.CheckWithMonitor{
+		MonitorID:     monitor.ID,
+		Url:           monitor.Url,
+		CheckInterval: monitor.CheckInterval,
+		CheckID:       check.ID,
+		StatusCode:    check.StatusCode,
+		ResponseTime:  check.ResponseTime,
+		CheckedAt:     check.CreatedAt,
+	}
+	jsonData, err := json.Marshal(payload)
+	if err != nil {
+		slog.Error("failed to marshal payload json", "error", err)
+		return
+	}
+	bytesReader := bytes.NewBuffer(jsonData)
+
+	req, err := http.NewRequest(http.MethodPost, monitor.WebhookUrl, bytesReader)
+
+	req.Header.Add("Content-Type", "application/json")
+	for responseStatus != 204 {
+		res, err := http.DefaultClient.Do(req)
+		if err != nil {
+			slog.Warn("failed to send request to client", "error", err)
+			return
+		}
+		responseStatus = res.StatusCode
 	}
 }

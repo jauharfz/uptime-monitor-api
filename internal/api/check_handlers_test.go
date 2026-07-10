@@ -33,11 +33,13 @@ func TestApplication_CheckMonitor(t *testing.T) {
 		UserID:        user.ID,
 		Url:           "https://google.com",
 		CheckInterval: 5,
+		WebhookUrl:    "https://discord.com",
 	}
 	monitor2 := models.Monitor{
 		UserID:        user.ID,
 		Url:           "https://yahoo.com",
 		CheckInterval: 10,
+		WebhookUrl:    "https://discord.com",
 	}
 	err = app.DB.InsertMonitor(monitor1)
 	if err != nil {
@@ -58,7 +60,7 @@ func TestApplication_CheckMonitor(t *testing.T) {
 		StatusCode:   200,
 		ResponseTime: 15,
 	}
-	err = app.DB.InsertCheck(check1.MonitorID, check1.StatusCode, check1.ResponseTime)
+	_, err = app.DB.InsertCheck(check1.MonitorID, check1.StatusCode, check1.ResponseTime)
 	if err != nil {
 		t.Fatalf("failed to insert check monitor %v", err)
 	}
@@ -67,7 +69,7 @@ func TestApplication_CheckMonitor(t *testing.T) {
 		StatusCode:   500,
 		ResponseTime: 500,
 	}
-	err = app.DB.InsertCheck(check2.MonitorID, check2.StatusCode, check2.ResponseTime)
+	_, err = app.DB.InsertCheck(check2.MonitorID, check2.StatusCode, check2.ResponseTime)
 	if err != nil {
 		t.Fatalf("failed to insert check monitor %v", err)
 	}
@@ -141,11 +143,13 @@ func TestApplication_ShowMonitorStats(t *testing.T) {
 		UserID:        user.ID,
 		Url:           "https://google.com",
 		CheckInterval: 5,
+		WebhookUrl:    "https://discord.com",
 	}
 	monitor2 := models.Monitor{
 		UserID:        user.ID,
 		Url:           "https://yahoo.com",
 		CheckInterval: 10,
+		WebhookUrl:    "https://discord.com",
 	}
 	err = app.DB.InsertMonitor(monitor1)
 	if err != nil {
@@ -166,7 +170,7 @@ func TestApplication_ShowMonitorStats(t *testing.T) {
 		StatusCode:   200,
 		ResponseTime: 15,
 	}
-	err = app.DB.InsertCheck(check1.MonitorID, check1.StatusCode, check1.ResponseTime)
+	_, err = app.DB.InsertCheck(check1.MonitorID, check1.StatusCode, check1.ResponseTime)
 	if err != nil {
 		t.Fatalf("failed to insert check monitor %v", err)
 	}
@@ -175,7 +179,7 @@ func TestApplication_ShowMonitorStats(t *testing.T) {
 		StatusCode:   500,
 		ResponseTime: 500,
 	}
-	err = app.DB.InsertCheck(check2.MonitorID, check2.StatusCode, check2.ResponseTime)
+	_, err = app.DB.InsertCheck(check2.MonitorID, check2.StatusCode, check2.ResponseTime)
 	if err != nil {
 		t.Fatalf("failed to insert check monitor %v", err)
 	}

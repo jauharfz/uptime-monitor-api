@@ -31,6 +31,12 @@ func (app *Application) CreateMonitor(w http.ResponseWriter, r *http.Request) {
 		monitor.CheckInterval = 10
 	}
 
+	if monitor.WebhookUrl != "" {
+		if !strings.HasPrefix(monitor.WebhookUrl, "http://") && !strings.HasPrefix(monitor.WebhookUrl, "https://") {
+			monitor.WebhookUrl = fmt.Sprintf("https://%s", monitor.WebhookUrl)
+		}
+	}
+
 	userID, ok := r.Context().Value(contextKeyUserID).(int)
 	if !ok {
 		slog.Warn("failed to get user id from context")
@@ -163,6 +169,12 @@ func (app *Application) UpdateMonitor(w http.ResponseWriter, r *http.Request) {
 		monitor.CheckInterval = 10
 	}
 
+	if monitor.WebhookUrl != "" {
+		if !strings.HasPrefix(monitor.WebhookUrl, "http://") && !strings.HasPrefix(monitor.WebhookUrl, "https://") {
+			monitor.WebhookUrl = fmt.Sprintf("https://%s", monitor.WebhookUrl)
+		}
+	}
+
 	_, err = app.DB.GetMonitorByID(monitorID, int(userID))
 	if err != nil {
 		slog.Warn("user failed to get monitor by user id", "error", err)
@@ -170,7 +182,7 @@ func (app *Application) UpdateMonitor(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err = app.DB.UpdateMonitorByID(monitor.ID, monitor.UserID, monitor.CheckInterval, monitor.Url)
+	err = app.DB.UpdateMonitorByID(monitor.ID, monitor.UserID, monitor.CheckInterval, monitor.Url, monitor.WebhookUrl)
 	if err != nil {
 		slog.Error("user cannot update monitor by id from database", "error", err)
 		http.Error(w, "Internal server error", http.StatusInternalServerError)

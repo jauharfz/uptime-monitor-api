@@ -1,0 +1,1 @@
+ALTER TABLE monitors ADD COLUMN webhook_url VARCHAR(255) NOT NULL DEFAULT '';

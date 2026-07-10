@@ -29,5 +29,3 @@ CREATE TABLE checks
 CREATE UNIQUE INDEX unique_lower_email_idx ON users (LOWER(email));
 CREATE INDEX monitor_id_idx ON checks (monitor_id);
 
-ALTER TABLE monitors ADD COLUMN last_checked_at timestamp;
-CREATE INDEX monitor_last_checked_at_idx ON monitors(last_checked_at);

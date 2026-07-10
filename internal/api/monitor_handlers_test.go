@@ -44,6 +44,7 @@ func TestApplication_CreateMonitor(t *testing.T) {
 	payload := models.Monitor{
 		Url:           "https://google.com",
 		CheckInterval: 10,
+		WebhookUrl:    "https://discord.com",
 	}
 
 	jsonData, err := json.Marshal(payload)
@@ -104,11 +105,13 @@ func TestApplication_ListMonitors(t *testing.T) {
 		UserID:        user.ID,
 		Url:           "https://google.com",
 		CheckInterval: 5,
+		WebhookUrl:    "https://discord.com",
 	}
 	monitor2 := models.Monitor{
 		UserID:        user.ID,
 		Url:           "https://yahoo.com",
 		CheckInterval: 10,
+		WebhookUrl:    "https://discord.com",
 	}
 
 	err = app.DB.InsertMonitor(monitor1)
@@ -178,11 +181,13 @@ func TestApplication_ShowMonitor(t *testing.T) {
 		UserID:        user.ID,
 		Url:           "https://google.com",
 		CheckInterval: 5,
+		WebhookUrl:    "https://discord.com",
 	}
 	monitor2 := models.Monitor{
 		UserID:        user.ID,
 		Url:           "https://yahoo.com",
 		CheckInterval: 10,
+		WebhookUrl:    "https://discord.com",
 	}
 	err = app.DB.InsertMonitor(monitor1)
 	if err != nil {
@@ -259,11 +264,13 @@ func TestApplication_UpdateMonitor(t *testing.T) {
 		UserID:        user.ID,
 		Url:           "https://google.com",
 		CheckInterval: 5,
+		WebhookUrl:    "https://discord.com",
 	}
 	monitor2 := models.Monitor{
 		UserID:        user.ID,
 		Url:           "https://yahoo.com",
 		CheckInterval: 10,
+		WebhookUrl:    "https://discord.com",
 	}
 	err = app.DB.InsertMonitor(monitor1)
 	if err != nil {
@@ -282,6 +289,7 @@ func TestApplication_UpdateMonitor(t *testing.T) {
 	payload := models.Monitor{
 		Url:           "https://hoyolab.com",
 		CheckInterval: 5,
+		WebhookUrl:    "https://whatsapp.com",
 	}
 
 	jsonData, err := json.Marshal(payload)
@@ -353,11 +361,13 @@ func TestApplication_DeleteMonitor(t *testing.T) {
 		UserID:        user.ID,
 		Url:           "https://google.com",
 		CheckInterval: 5,
+		WebhookUrl:    "https://discord.com",
 	}
 	monitor2 := models.Monitor{
 		UserID:        user.ID,
 		Url:           "https://yahoo.com",
 		CheckInterval: 10,
+		WebhookUrl:    "https://discord.com",
 	}
 	err = app.DB.InsertMonitor(monitor1)
 	if err != nil {
