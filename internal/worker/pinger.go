@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"fmt"
 	"log/slog"
 	"net/http"
 	"sync"
@@ -84,7 +85,7 @@ func (w *Worker) SendWebhook(monitor *models.Monitor, check *models.Check, wg *s
 	defer wg.Done()
 	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
 	defer cancel()
-	payload := models.CheckWithMonitor{
+	params := models.CheckWithMonitor{
 		MonitorID:     monitor.ID,
 		Url:           monitor.Url,
 		CheckInterval: monitor.CheckInterval,
@@ -93,6 +94,21 @@ func (w *Worker) SendWebhook(monitor *models.Monitor, check *models.Check, wg *s
 		ResponseTime:  check.ResponseTime,
 		CheckedAt:     check.CreatedAt,
 	}
+
+	status := "DOWN"
+	if params.StatusCode >= 200 && params.StatusCode < 300 {
+		status = "UP"
+	}
+	header := fmt.Sprintf("%s <- this URL is %s right now, here's the detail:", params.Url, status)
+
+	content := fmt.Sprintf("**%s**\nMonitor ID: %d\nURL: %s\nCheck Interval: %d\nCheck ID: %d\nStatus Code: %d\nResponse Time: %d\nChecked At: %v", header, params.MonitorID, params.Url, params.CheckInterval, params.CheckID, params.StatusCode, params.ResponseTime, params.CheckedAt)
+
+	payload := struct {
+		Content string `json:"content"`
+	}{
+		Content: content,
+	}
+
 	jsonData, err := json.Marshal(payload)
 	if err != nil {
 		slog.Error("failed to marshal payload json", "error", err)
