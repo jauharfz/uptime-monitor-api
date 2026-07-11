@@ -61,16 +61,15 @@ func (w *Worker) StartWorker(ctx context.Context, wg *sync.WaitGroup) {
 						return
 					}
 
-					if status != m.LastStatusCode && m.WebhookUrl != "" {
-						batchWg.Add(1)
-						go func(m models.Monitor, c models.Check) {
-							w.SendWebhook(&m, &c, &batchWg)
-						}(monitor, check)
+					isUp := status >= 200 && status < 400
+					wasUp := m.LastStatusCode >= 200 && m.LastStatusCode < 400
+					if isUp != wasUp && m.WebhookUrl != "" {
+						w.SendWebhook(&m, &check)
 					}
 
 					err = w.DB.UpdateLastCheckedAndStatusCode(status, m.ID)
 					if err != nil {
-						slog.Error("failed to update lash checked monitor by monitor id from database", "url", m.Url, "error", err)
+						slog.Error("failed to update last checked monitor by monitor id from database", "url", m.Url, "error", err)
 						return
 					}
 					slog.Info("Url Inserted Normally")
@@ -81,8 +80,7 @@ func (w *Worker) StartWorker(ctx context.Context, wg *sync.WaitGroup) {
 	}
 }
 
-func (w *Worker) SendWebhook(monitor *models.Monitor, check *models.Check, wg *sync.WaitGroup) {
-	defer wg.Done()
+func (w *Worker) SendWebhook(monitor *models.Monitor, check *models.Check) {
 	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
 	defer cancel()
 	params := models.CheckWithMonitor{
@@ -117,6 +115,10 @@ func (w *Worker) SendWebhook(monitor *models.Monitor, check *models.Check, wg *s
 	bytesReader := bytes.NewBuffer(jsonData)
 
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost, monitor.WebhookUrl, bytesReader)
+	if err != nil {
+		slog.Error("failed to build webhook request", "error", err)
+		return
+	}
 
 	req.Header.Add("Content-Type", "application/json")
 	res, err := http.DefaultClient.Do(req)
