@@ -40,18 +40,21 @@ func TestMain(m *testing.M) {
 	}
 	slog.Info("connected to database")
 
-	migrationFile := filepath.Join("..", "..", "migrations", "001_init.sql")
-	sqlBytes, err := os.ReadFile(migrationFile)
-	if err != nil {
-		slog.Error("failed to get migration file", "error", err)
-	}
 	_, err = conn.Exec("DROP SCHEMA public CASCADE; CREATE SCHEMA public;")
 	if err != nil {
 		slog.Error("failed to clean database test", "error", err)
 	}
-	_, err = conn.Exec(string(sqlBytes))
-	if err != nil {
-		slog.Error("failed to migrate sql database", "error", err)
+
+	matches, err := filepath.Glob(filepath.Join("..", "..", "migrations", "*.sql"))
+	for _, sqlFile := range matches {
+		sqlBytes, err := os.ReadFile(sqlFile)
+		if err != nil {
+			slog.Error("failed to get migration file", "error", err)
+		}
+		_, err = conn.Exec(string(sqlBytes))
+		if err != nil {
+			slog.Error("failed to migrate sql database")
+		}
 	}
 
 	db := storage.NewPostgresStore(conn)
