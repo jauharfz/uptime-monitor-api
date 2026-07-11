@@ -82,7 +82,8 @@ func (w *Worker) StartWorker(ctx context.Context, wg *sync.WaitGroup) {
 
 func (w *Worker) SendWebhook(monitor *models.Monitor, check *models.Check, wg *sync.WaitGroup) {
 	defer wg.Done()
-	var responseStatus int
+	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+	defer cancel()
 	payload := models.CheckWithMonitor{
 		MonitorID:     monitor.ID,
 		Url:           monitor.Url,
@@ -99,15 +100,14 @@ func (w *Worker) SendWebhook(monitor *models.Monitor, check *models.Check, wg *s
 	}
 	bytesReader := bytes.NewBuffer(jsonData)
 
-	req, err := http.NewRequest(http.MethodPost, monitor.WebhookUrl, bytesReader)
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, monitor.WebhookUrl, bytesReader)
 
 	req.Header.Add("Content-Type", "application/json")
-	for responseStatus != 204 {
-		res, err := http.DefaultClient.Do(req)
-		if err != nil {
-			slog.Warn("failed to send request to client", "error", err)
-			return
-		}
-		responseStatus = res.StatusCode
+	res, err := http.DefaultClient.Do(req)
+	if err != nil {
+		slog.Warn("failed to send request to client", "error", err)
+		return
 	}
+	defer res.Body.Close()
+	slog.Info("payload sended to webhook", "url", monitor.Url, "status_code", res.StatusCode)
 }

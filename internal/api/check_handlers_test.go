@@ -33,13 +33,11 @@ func TestApplication_CheckMonitor(t *testing.T) {
 		UserID:        user.ID,
 		Url:           "https://google.com",
 		CheckInterval: 5,
-		WebhookUrl:    "https://discord.com",
 	}
 	monitor2 := models.Monitor{
 		UserID:        user.ID,
 		Url:           "https://yahoo.com",
 		CheckInterval: 10,
-		WebhookUrl:    "https://discord.com",
 	}
 	err = app.DB.InsertMonitor(monitor1)
 	if err != nil {
@@ -143,13 +141,11 @@ func TestApplication_ShowMonitorStats(t *testing.T) {
 		UserID:        user.ID,
 		Url:           "https://google.com",
 		CheckInterval: 5,
-		WebhookUrl:    "https://discord.com",
 	}
 	monitor2 := models.Monitor{
 		UserID:        user.ID,
 		Url:           "https://yahoo.com",
 		CheckInterval: 10,
-		WebhookUrl:    "https://discord.com",
 	}
 	err = app.DB.InsertMonitor(monitor1)
 	if err != nil {
