@@ -3,7 +3,8 @@
 
 A small HTTP service in Go where a user registers URLs and has them checked on a
 schedule by a background worker. Each check records the HTTP status code and
-response time, and the API exposes per-monitor history and uptime statistics.
+response time, the API exposes per-monitor history and uptime statistics, and an
+optional webhook (e.g. Discord) fires when a site goes down or recovers.
 
 I built this as my first backend project written from scratch — no starter
 template and no web framework. The goal was to understand how the parts of a REST
@@ -30,6 +31,9 @@ Two things run inside one process:
 2. **Background worker** — a goroutine driven by a `time.Ticker`. On each tick it
    asks the database which monitors are due for a check, pings them concurrently,
    and writes the result (status code + response time) into the `checks` table.
+   When a monitor flips between up and down, the worker POSTs a notification to
+   that monitor's `webhook_url` if one is set — pointing it at a Discord webhook
+   gives you down/up alerts in a channel.
 
 Request flow for a protected endpoint:
 
@@ -46,7 +50,7 @@ request
 These are choices I made deliberately while building it:
 
 - **Standard-library routing.** Go 1.22's `http.ServeMux` matches on method and
-  path patterns (`GET /monitor/{id}`, read with `r.PathValue("id")`), so a router
+  path patterns (`GET /monitors/{id}`, read with `r.PathValue("id")`), so a router
   library wasn't necessary for this scope.
 - **Hand-written JWT.** I implemented HS256 myself — base64url header and payload,
   signed with HMAC-SHA256, verified with a constant-time compare (`hmac.Equal`) —
@@ -68,6 +72,9 @@ These are choices I made deliberately while building it:
   waits on a `sync.WaitGroup` so in-flight checks finish before exit.
 - **Request hardening.** Request bodies are capped with `http.MaxBytesReader`, and
   the JSON decoder uses `DisallowUnknownFields` to reject unexpected input.
+- **Alerts only on state transitions.** The webhook fires when a monitor's
+  up/down state flips, not on every failed check — a site that is down for an
+  hour produces one alert, not one per check.
 - **Structured logging** via `log/slog` (JSON handler).
 
 ## Data model
@@ -87,13 +94,15 @@ These are choices I made deliberately while building it:
 
 | column          | type         | notes                                    |
 |-----------------|--------------|------------------------------------------|
-| id              | serial PK    |                                          |
-| user_id         | int FK       | references users(id), on delete cascade  |
-| url             | varchar(255) |                                          |
-| check_interval  | int          | seconds between checks                   |
-| last_checked_at | timestamp    | nullable; indexed                        |
-| created_at      | timestamp    |                                          |
-| updated_at      | timestamp    |                                          |
+| id               | serial PK    |                                          |
+| user_id          | int FK       | references users(id), on delete cascade  |
+| url              | varchar(255) |                                          |
+| check_interval   | int          | seconds between checks (min 10)          |
+| last_checked_at  | timestamp    | nullable; indexed                        |
+| webhook_url      | varchar(255) | optional alert target; empty = no alerts |
+| last_status_code | int          | status from the previous check, used to detect up/down transitions |
+| created_at       | timestamp    |                                          |
+| updated_at       | timestamp    |                                          |
 
 **checks**
 
@@ -108,21 +117,26 @@ These are choices I made deliberately while building it:
 
 ## API
 
-All responses are JSON with the shape `{ "status", "message", "data" }`
-(`data` is omitted when empty).
+All success responses are JSON with the shape `{ "status", "message", "data" }`
+(`data` is omitted when empty). The full contract lives in
+[openapi.yaml](openapi.yaml) — browse it rendered at
+[/docs](https://uptime-monitor-api.duckdns.org/docs) on the live instance, or
+import it into Postman or Insomnia to try the endpoints.
 
-| Method | Path                    | Auth   | Description                          |
-|--------|-------------------------|--------|--------------------------------------|
-| GET    | /health                 | public | liveness check                       |
-| POST   | /users/register         | public | create an account                    |
-| POST   | /users/login            | public | log in, returns a JWT                |
-| POST   | /monitor                | bearer | create a monitor                     |
-| GET    | /monitor                | bearer | list the caller's monitors           |
-| GET    | /monitor/{id}           | bearer | get one monitor                      |
-| PATCH  | /monitor/{id}           | bearer | update url / check_interval          |
-| DELETE | /monitor/{id}           | bearer | delete a monitor                     |
-| GET    | /monitor/{id}/checks    | bearer | last 50 checks, newest first         |
-| GET    | /monitor/{id}/stats     | bearer | total checks, avg response, uptime % |
+| Method | Path                           | Auth   | Description                          |
+|--------|--------------------------------|--------|--------------------------------------|
+| GET    | /health                        | public | liveness check                       |
+| GET    | /docs                          | public | interactive API docs (Scalar)        |
+| GET    | /openapi.yaml                  | public | the OpenAPI spec itself              |
+| POST   | /api/v1/users/register         | public | create an account                    |
+| POST   | /api/v1/users/login            | public | log in, returns a JWT                |
+| POST   | /api/v1/monitors               | bearer | create a monitor                     |
+| GET    | /api/v1/monitors               | bearer | list the caller's monitors           |
+| GET    | /api/v1/monitors/{id}          | bearer | get one monitor                      |
+| PATCH  | /api/v1/monitors/{id}          | bearer | update url / check_interval / webhook_url |
+| DELETE | /api/v1/monitors/{id}          | bearer | delete a monitor                     |
+| GET    | /api/v1/monitors/{id}/checks   | bearer | last 50 checks, newest first         |
+| GET    | /api/v1/monitors/{id}/stats    | bearer | total checks, avg response, uptime % |
 
 Protected routes expect an `Authorization: Bearer <token>` header.
 
@@ -131,25 +145,27 @@ Protected routes expect an `Authorization: Bearer <token>` header.
 Register, then log in to get a token:
 
 ```bash
-curl -X POST localhost:8080/users/register \
+curl -X POST localhost:8080/api/v1/users/register \
   -H "Content-Type: application/json" \
   -d '{"username":"sam","email":"sam@example.com","password":"secret123"}'
 
-curl -X POST localhost:8080/users/login \
+curl -X POST localhost:8080/api/v1/users/login \
   -H "Content-Type: application/json" \
   -d '{"email":"sam@example.com","password":"secret123"}'
 # -> {"status":"success","message":"Login Success","data":{"token":"<jwt>"}}
 ```
 
-Create a monitor and read its stats:
+Create a monitor (optionally with a webhook for down/up alerts) and read its
+stats:
 
 ```bash
-curl -X POST localhost:8080/monitor \
+curl -X POST localhost:8080/api/v1/monitors \
   -H "Authorization: Bearer <jwt>" \
   -H "Content-Type: application/json" \
-  -d '{"url":"https://example.com","check_interval":30}'
+  -d '{"url":"https://example.com","check_interval":30,
+       "webhook_url":"https://discord.com/api/webhooks/<id>/<token>"}'
 
-curl localhost:8080/monitor/1/stats -H "Authorization: Bearer <jwt>"
+curl localhost:8080/api/v1/monitors/1/stats -H "Authorization: Bearer <jwt>"
 # -> {"status":"success","message":"get monitor stats",
 #     "data":{"total_checks":12,"avg_response_time":143,"uptime_percentage":100}}
 ```
@@ -159,8 +175,9 @@ curl localhost:8080/monitor/1/stats -H "Authorization: Bearer <jwt>"
 The handlers and storage layer are tested against a real PostgreSQL database
 rather than mocks, so the SQL runs too. `TestMain` (in
 `internal/api/setup_test.go`) connects to a separate `uptime_monitor_test`
-database, drops and recreates the schema from `migrations/001_init.sql` before the
-run, and starts the background worker so the whole process is exercised. Each
+database, drops the schema and reapplies every file in `migrations/` in order
+before the run, and starts the background worker so the whole process is
+exercised. Each
 handler test drives an endpoint with `net/http/httptest` and checks the status
 code and JSON body.
 
@@ -171,7 +188,7 @@ go test ./...
 
 ## Running locally
 
-Requirements: Docker (and Go 1.22+ if you want to run the server outside a
+Requirements: Docker (and Go 1.26+ if you want to run the server outside a
 container).
 
 Configuration comes from environment variables, loaded from a `.env` file (copy
@@ -195,16 +212,17 @@ cp .env.example .env   # then fill in real values
 docker compose up --build
 ```
 
-This starts PostgreSQL and the API. `migrations/001_init.sql` is mounted into the
-Postgres init directory, so the schema is created automatically the first time the
-database volume is initialised. The API is then available on
+This starts PostgreSQL and the API. The `migrations/` folder is mounted into the
+Postgres init directory, so on a fresh database volume every numbered migration
+is applied in order automatically. The API is then available on
 `http://localhost:8080` (Postgres is published on `localhost:5454`).
 
-**Applying the schema manually** — only needed if you run Postgres yourself,
-outside Compose:
+**Applying the schema manually** — needed if you run Postgres yourself outside
+Compose, or when a new migration lands on an already-initialised volume (the init
+directory only runs on first boot):
 
 ```bash
-psql "$DATABASE_URL" -f migrations/001_init.sql
+for f in migrations/*.sql; do psql "$DATABASE_URL" -f "$f"; done
 ```
 
 ## Deployment
@@ -215,20 +233,23 @@ with an automatically renewed Let's Encrypt certificate, and the hostname is a
 DuckDNS subdomain. The containers' published ports are bound to `localhost`, so
 only Caddy reaches them from outside.
 
-Live: `https://uptime-monitor-api.duckdns.org/health`
+Live: [`/health`](https://uptime-monitor-api.duckdns.org/health) ·
+[`/docs`](https://uptime-monitor-api.duckdns.org/docs)
 
 ## Limitations and next steps
 
 This is a learning project, and there are things I left out on purpose or would
 do next:
 
-- **Validation is light.** A monitor URL with no scheme gets `https://`
-  prepended, but it isn't otherwise validated, and `check_interval` has no lower
-  bound yet.
+- **Validation is light.** URLs with no scheme get `https://` prepended and
+  `check_interval` has a 10-second floor, but URLs aren't otherwise validated —
+  including against private/internal addresses (SSRF), which a public deployment
+  would need to reject.
 - **JWT is hand-rolled** for learning; a production version would use a maintained
   library and rotate the signing secret.
-- **No migration tooling.** The schema auto-loads on first database init, but
-  there's no versioned-migration setup for evolving it later.
+- **Migrations are plain numbered SQL files** applied in order; a real migration
+  tool (e.g. goose) would track which ones have already run instead of relying on
+  fresh-volume init or manual psql.
 - **Checks history is capped at the latest 50** with no pagination.
-- **No alerting.** TLS and the reverse proxy are handled at deploy time (above);
-  a "monitor went down" notification would be the next feature.
+- **Webhook delivery is fire-and-forget.** One POST per up/down transition with a
+  3s timeout — no retries or backoff if the webhook endpoint happens to be down.
