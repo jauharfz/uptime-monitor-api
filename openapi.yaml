@@ -1,0 +1,417 @@
+openapi: 3.0.3
+info:
+  title: Uptime Monitor API
+  description: |
+    A small HTTP service where a user registers URLs and has them checked on a
+    schedule by a background worker. Each check records the HTTP status code and
+    response time; per-monitor history and uptime statistics are exposed over the
+    API, and an optional webhook fires when a monitor flips between up and down.
+
+    Success responses share the envelope `{ "status", "message", "data" }`
+    (`data` omitted when empty). Error responses are plain text.
+  version: 1.0.0
+servers:
+  - url: https://uptime-monitor-api.duckdns.org
+    description: Live demo
+  - url: http://localhost:8080
+    description: Local development
+
+tags:
+  - name: health
+  - name: users
+  - name: monitors
+
+paths:
+  /health:
+    get:
+      tags: [health]
+      summary: Liveness check
+      security: []
+      responses:
+        "200":
+          description: Service is up
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponse"
+
+  /api/v1/users/register:
+    post:
+      tags: [users]
+      summary: Create an account
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RegisterRequest"
+      responses:
+        "201":
+          description: User created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  /api/v1/users/login:
+    post:
+      tags: [users]
+      summary: Log in and receive a JWT
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LoginRequest"
+      responses:
+        "200":
+          description: Login success; `data.token` holds the JWT
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/ApiResponse"
+                  - type: object
+                    properties:
+                      data:
+                        type: object
+                        properties:
+                          token:
+                            type: string
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /api/v1/monitors:
+    post:
+      tags: [monitors]
+      summary: Create a monitor
+      description: |
+        `url` and `webhook_url` get `https://` prepended when no scheme is given.
+        `check_interval` below 10 seconds is raised to 10. Unknown JSON fields are
+        rejected.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/MonitorCreateRequest"
+      responses:
+        "201":
+          description: Monitor created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "500":
+          $ref: "#/components/responses/InternalError"
+    get:
+      tags: [monitors]
+      summary: List the caller's monitors
+      responses:
+        "200":
+          description: All monitors owned by the caller
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/ApiResponse"
+                  - type: object
+                    properties:
+                      data:
+                        type: array
+                        items:
+                          $ref: "#/components/schemas/Monitor"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /api/v1/monitors/{id}:
+    parameters:
+      - $ref: "#/components/parameters/MonitorId"
+    get:
+      tags: [monitors]
+      summary: Get one monitor
+      responses:
+        "200":
+          description: The monitor, if owned by the caller
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/ApiResponse"
+                  - type: object
+                    properties:
+                      data:
+                        $ref: "#/components/schemas/Monitor"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    patch:
+      tags: [monitors]
+      summary: Update url, check_interval, or webhook_url
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/MonitorCreateRequest"
+      responses:
+        "200":
+          description: Monitor updated (echoes the new values)
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/ApiResponse"
+                  - type: object
+                    properties:
+                      data:
+                        $ref: "#/components/schemas/Monitor"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    delete:
+      tags: [monitors]
+      summary: Delete a monitor
+      responses:
+        "200":
+          description: Monitor deleted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  /api/v1/monitors/{id}/checks:
+    parameters:
+      - $ref: "#/components/parameters/MonitorId"
+    get:
+      tags: [monitors]
+      summary: Latest checks for a monitor (newest first, capped at 50)
+      responses:
+        "200":
+          description: Check history
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/ApiResponse"
+                  - type: object
+                    properties:
+                      data:
+                        type: array
+                        items:
+                          $ref: "#/components/schemas/Check"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /api/v1/monitors/{id}/stats:
+    parameters:
+      - $ref: "#/components/parameters/MonitorId"
+    get:
+      tags: [monitors]
+      summary: Aggregate stats for a monitor
+      responses:
+        "200":
+          description: Total checks, average response time, uptime percentage
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/ApiResponse"
+                  - type: object
+                    properties:
+                      data:
+                        $ref: "#/components/schemas/MonitorStats"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+security:
+  - bearerAuth: []
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: "Obtain a token via /api/v1/users/login, then send `Authorization: Bearer <token>`."
+
+  parameters:
+    MonitorId:
+      name: id
+      in: path
+      required: true
+      schema:
+        type: integer
+
+  responses:
+    BadRequest:
+      description: Malformed request (invalid JSON, unknown fields, or bad path value)
+      content:
+        text/plain:
+          schema:
+            type: string
+    Unauthorized:
+      description: Missing/invalid bearer token, or invalid credentials
+      content:
+        text/plain:
+          schema:
+            type: string
+    NotFound:
+      description: Monitor does not exist or is not owned by the caller
+      content:
+        text/plain:
+          schema:
+            type: string
+    InternalError:
+      description: Internal server error
+      content:
+        text/plain:
+          schema:
+            type: string
+
+  schemas:
+    ApiResponse:
+      type: object
+      properties:
+        status:
+          type: string
+          example: success
+        message:
+          type: string
+        data:
+          nullable: true
+      required: [status, message]
+
+    RegisterRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        username:
+          type: string
+        email:
+          type: string
+          format: email
+        password:
+          type: string
+          format: password
+      required: [username, email, password]
+
+    LoginRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        email:
+          type: string
+          format: email
+        password:
+          type: string
+          format: password
+      required: [email, password]
+
+    MonitorCreateRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        url:
+          type: string
+          description: Target to check. `https://` is prepended when no scheme is given.
+          example: example.com
+        check_interval:
+          type: integer
+          description: Seconds between checks; values below 10 are raised to 10.
+          example: 30
+        webhook_url:
+          type: string
+          description: Optional. POSTed to when the monitor flips between up and down (e.g. a Discord webhook).
+      required: [url, check_interval]
+
+    Monitor:
+      type: object
+      properties:
+        id:
+          type: integer
+        user_id:
+          type: integer
+        url:
+          type: string
+        check_interval:
+          type: integer
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+        last_checked_at:
+          type: object
+          description: Nullable timestamp (Go sql.NullTime serialization).
+          properties:
+            Time:
+              type: string
+              format: date-time
+            Valid:
+              type: boolean
+        webhook_url:
+          type: string
+          description: Omitted when empty.
+        last_status_code:
+          type: integer
+          description: Status code recorded by the most recent check. Omitted when zero.
+
+    Check:
+      type: object
+      properties:
+        id:
+          type: integer
+        monitor_id:
+          type: integer
+        status_code:
+          type: integer
+          description: HTTP status from the ping; 0 means the request itself failed.
+        response_time:
+          type: integer
+          description: Milliseconds.
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+
+    MonitorStats:
+      type: object
+      properties:
+        total_checks:
+          type: integer
+        avg_response_time:
+          type: number
+          description: Milliseconds.
+        uptime_percentage:
+          type: number
+          example: 99.5

@@ -7,6 +7,8 @@ func Routes(app *Application) http.Handler {
 	// Public Routes
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /health", app.HealthTest)
+	mux.HandleFunc("GET /openapi.yaml", app.GetYamlSpec)
+	mux.HandleFunc("GET /docs", app.ShowSwaggerUI)
 	mux.HandleFunc("POST /api/v1/users/register", app.PostUserRegister)
 	mux.HandleFunc("POST /api/v1/users/login", app.PostUserLogin)
 
